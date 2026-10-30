@@ -82,7 +82,7 @@ function trendText(m: Metric | undefined) {
 function formatMetric(m: Metric | undefined, fallback: string) {
   if (!m) return fallback;
   const v = Number(m.value);
-  const formatted = m.unit === "%" ? v.toFixed(1) : v.toLocaleString("fr-FR");
+  const formatted = m.unit === "%" ? v.toFixed(1).replace(".", ",") : v.toLocaleString("fr-FR");
   return `${formatted}${m.unit ?? ""}`;
 }
 
@@ -691,7 +691,9 @@ function ManagerSpace() {
                   <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
                     {m.label}
                   </p>
-                  <p className="font-display text-[32px] text-primary">{formatMetric(m, "—")}</p>
+                  <p className="font-label-md text-[32px] tabular-nums text-primary">
+                    {formatMetric(m, "—")}
+                  </p>
                   <p className="text-[10px] text-on-surface-variant font-label-sm">
                     {trendText(m)}
                     {deltaText(m) && ` · ${deltaText(m)}`}
