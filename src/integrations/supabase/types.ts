@@ -306,6 +306,44 @@ export type Database = {
         }
         Relationships: []
       }
+      submission_responses: {
+        Row: {
+          body: string
+          responded_at: string
+          responded_by_email: string
+          responded_by_name: string
+          responded_by_role: Database["public"]["Enums"]["app_role"]
+          submission_id: string
+          visibility: Database["public"]["Enums"]["response_visibility"]
+        }
+        Insert: {
+          body: string
+          responded_at?: string
+          responded_by_email: string
+          responded_by_name: string
+          responded_by_role: Database["public"]["Enums"]["app_role"]
+          submission_id: string
+          visibility?: Database["public"]["Enums"]["response_visibility"]
+        }
+        Update: {
+          body?: string
+          responded_at?: string
+          responded_by_email?: string
+          responded_by_name?: string
+          responded_by_role?: Database["public"]["Enums"]["app_role"]
+          submission_id?: string
+          visibility?: Database["public"]["Enums"]["response_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_responses_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: true
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submission_status_history: {
         Row: {
           changed_at: string
@@ -483,6 +521,7 @@ export type Database = {
         | "en désaccord avec les process"
         | "doublon"
         | "autre"
+      response_visibility: "auteur" | "entreprise"
       submission_status: "en attente" | "validée" | "refusée"
     }
     CompositeTypes: {
@@ -622,6 +661,7 @@ export const Constants = {
         "doublon",
         "autre",
       ],
+      response_visibility: ["auteur", "entreprise"],
       submission_status: ["en attente", "validée", "refusée"],
     },
   },
