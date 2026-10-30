@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { FieldErrors } from "@/lib/manage-schemas";
 
 export function ManageIcon({ name, className = "" }: { name: string; className?: string }) {
@@ -48,6 +48,24 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={`${inputBase} ${props.className ?? ""}`} />;
 }
 
+const FIELD_SELECTOR =
+  'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  FIELD_SELECTOR,
+  '[tabindex]:not([tabindex="-1"])',
+].join(", ");
+
+/** Fenêtres ouvertes, la dernière est au premier plan : seule elle réagit au clavier. */
+const openDialogs: HTMLElement[] = [];
+
+function focusableIn(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => el.getClientRects().length > 0,
+  );
+}
+
 export function Modal({
   title,
   onClose,
@@ -57,9 +75,57 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    openDialogs.push(dialog);
+
+    const firstField = focusableIn(dialog).find((el) => el.matches(FIELD_SELECTOR));
+    (firstField ?? closeRef.current)?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (!dialog || openDialogs[openDialogs.length - 1] !== dialog) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusableIn(dialog);
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (!dialog.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      openDialogs.splice(openDialogs.indexOf(dialog), 1);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-sm md:p-lg">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -68,6 +134,7 @@ export function Modal({
         <div className="flex items-center justify-between border-b border-outline-variant pb-sm">
           <h2 className="font-headline-sm text-headline-sm text-primary">{title}</h2>
           <button
+            ref={closeRef}
             type="button"
             aria-label="Fermer"
             onClick={onClose}
