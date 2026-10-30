@@ -60,7 +60,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...field}
       {...props}
-      className={`${inputBase} read-only:bg-surface-container read-only:cursor-default ${props.className ?? ""}`}
+      className={`${inputBase} read-only:bg-surface-container-highest read-only:border-dashed read-only:border-outline read-only:cursor-default ${props.className ?? ""}`}
     />
   );
 }
