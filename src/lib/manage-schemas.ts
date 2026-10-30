@@ -53,6 +53,8 @@ export const blockerSchema = z.object({
   }),
 });
 
+export const METRIC_PERIOD_VALUES = ["hebdomadaire", "mensuel", "trimestriel", "annuel"] as const;
+
 export const metricSchema = z.object({
   key: z
     .string()
@@ -65,6 +67,7 @@ export const metricSchema = z.object({
     .number({ invalid_type_error: "Valeur numérique requise" })
     .finite("Valeur numérique requise"),
   unit: z.string().trim().max(8, "8 caractères maximum").nullable(),
+  period: z.enum(METRIC_PERIOD_VALUES, { errorMap: () => ({ message: "Période requise" }) }),
 });
 
 export type FieldErrors = Record<string, string>;

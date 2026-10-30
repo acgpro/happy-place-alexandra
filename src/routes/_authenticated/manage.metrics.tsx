@@ -9,16 +9,24 @@ import {
   FormActions,
   Modal,
   RowActions,
+  Select,
   TextInput,
 } from "@/components/manage/crud-ui";
-import { metricSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
+import {
+  METRIC_PERIOD_VALUES,
+  metricSchema,
+  validate,
+  type FieldErrors,
+} from "@/lib/manage-schemas";
 import { MetricHistory } from "@/components/manage/metric-history";
 import {
   createMetric,
   deleteMetric,
   fetchMetrics,
   deltaText,
+  formatFullDate,
   formatMetricValue,
+  metricPeriodLabel,
   updateMetricRow,
   TREND_LABELS,
   type Metric,
@@ -39,9 +47,9 @@ export const Route = createFileRoute("/_authenticated/manage/metrics")({
   component: ManageMetrics,
 });
 
-type FormState = { key: string; label: string; value: string; unit: string };
+type FormState = { key: string; label: string; value: string; unit: string; period: string };
 
-const empty: FormState = { key: "", label: "", value: "", unit: "" };
+const empty: FormState = { key: "", label: "", value: "", unit: "", period: "" };
 
 function ManageMetrics() {
   const qc = useQueryClient();
@@ -90,6 +98,7 @@ function ManageMetrics() {
       label: form.label,
       value: raw === "" || Number.isNaN(Number(raw)) ? Number.NaN : Number(raw),
       unit: form.unit.trim() === "" ? null : form.unit,
+      period: form.period,
     };
     const res = validate(metricSchema, candidate);
     if (!res.ok) {
@@ -142,6 +151,10 @@ function ManageMetrics() {
                   </>
                 )}
               </p>
+              <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
+                Mis à jour <time dateTime={m.updated_at}>{formatFullDate(m.updated_at)}</time> •
+                Période : {metricPeriodLabel(m.period)}
+              </p>
               <MetricHistory metricKey={m.key} unit={m.unit} />
             </div>
             <RowActions
@@ -153,6 +166,7 @@ function ManageMetrics() {
                   label: m.label,
                   value: String(m.value),
                   unit: m.unit ?? "",
+                  period: m.period,
                 });
               }}
               onDelete={() => setToDelete(m)}
@@ -198,6 +212,22 @@ function ManageMetrics() {
                 placeholder="%"
                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
               />
+            </Field>
+            <Field label="Période" error={errors.period}>
+              <Select
+                value={form.period}
+                required
+                aria-label="Période"
+                aria-invalid={!!errors.period}
+                onChange={(e) => setForm({ ...form, period: e.target.value })}
+              >
+                <option value="">— Choisir une période —</option>
+                {METRIC_PERIOD_VALUES.map((p) => (
+                  <option key={p} value={p}>
+                    {metricPeriodLabel(p)}
+                  </option>
+                ))}
+              </Select>
             </Field>
             <FormActions pending={save.isPending} onCancel={close} />
           </form>

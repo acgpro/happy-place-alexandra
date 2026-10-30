@@ -35,7 +35,8 @@ import {
   submitIdea,
   timeAgo,
   updateBlockerStatus,
-  updateMetric,
+  formatFullDate,
+  metricPeriodLabel,
   TREND_LABELS,
   type Metric,
   type SubmissionInput,
@@ -78,22 +79,11 @@ function trendText(m: Metric | undefined) {
   return m ? TREND_LABELS[m.trend] : "";
 }
 
-function metricOf(metrics: Metric[] | undefined, key: string) {
-  return metrics?.find((m) => m.key === key);
-}
-
 function formatMetric(m: Metric | undefined, fallback: string) {
   if (!m) return fallback;
   const v = Number(m.value);
   const formatted = m.unit === "%" ? v.toFixed(1) : v.toLocaleString("fr-FR");
   return `${formatted}${m.unit ?? ""}`;
-}
-
-function metricLabel(metric: Metric | undefined, fallback: string) {
-  if (!metric) return fallback;
-  if (metric.key === "training_kpi") return "Taux de placement";
-  if (metric.key === "active_users") return "Missions actives";
-  return metric.label;
 }
 
 function ManagerSpace() {
@@ -114,7 +104,6 @@ function ManagerSpace() {
   const [media, setMedia] = useState<MediaDraft>(emptyMedia);
   const [showLinkErrs, setShowLinkErrs] = useState(false);
   const newsLinkErrs = showLinkErrs ? linkErrors(media.links) : {};
-  const [nps, setNps] = useState<string>("");
   const [submissionForm, setSubmissionForm] = useState<SubmissionInput | null>(null);
   const [submissionErrors, setSubmissionErrors] = useState<FieldErrors>({});
   const myTeams = useQuery({
@@ -243,19 +232,9 @@ function ManagerSpace() {
     onError,
   });
 
-  const saveMetric = useMutation({
-    mutationFn: updateMetric,
-    onSuccess: () => {
-      toast.success("KPI mis à jour");
-      qc.invalidateQueries({ queryKey: ["metrics"] });
-    },
-    onError,
-  });
-
   const visibleDrafts = news.data?.filter((n) => n.status === "brouillon") ?? [];
   const drafts = visibleDrafts.length;
   const published = news.data?.filter((n) => n.status === "publiée") ?? [];
-  const npsMetric = metricOf(metrics.data, "nps");
   const roleLabel = role === "admin" ? "ADMIN" : role === "manager" ? "MANAGER" : "COLLABORATEUR";
 
   function sendSubmission(e: React.FormEvent) {
@@ -707,65 +686,31 @@ function ManagerSpace() {
               {isAdmin && <Icon name="settings" className="text-on-surface-variant cursor-pointer" />}
             </div>
             <div className="grid grid-cols-2 gap-sm mb-md">
-              <div className="p-sm bg-card border border-outline-variant text-center">
-                <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
-                  {metricLabel(metricOf(metrics.data, "training_kpi"), "Taux de placement")}
+              {metrics.data?.map((m) => (
+                <div key={m.key} className="p-sm bg-card border border-outline-variant text-center">
+                  <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
+                    {m.label}
+                  </p>
+                  <p className="font-display text-[32px] text-primary">{formatMetric(m, "—")}</p>
+                  <p className="text-[10px] text-on-surface-variant font-label-sm">
+                    {trendText(m)}
+                    {deltaText(m) && ` · ${deltaText(m)}`}
+                  </p>
+                  <p className="text-[10px] text-on-surface-variant font-label-sm">
+                    Mis à jour {timeAgo(m.updated_at)},{" "}
+                    <time dateTime={m.updated_at}>{formatFullDate(m.updated_at)}</time>
+                  </p>
+                  <p className="text-[10px] text-on-surface-variant font-label-sm">
+                    Période : {metricPeriodLabel(m.period)}
+                  </p>
+                </div>
+              ))}
+              {metrics.data?.length === 0 && (
+                <p className="col-span-2 text-body-sm italic text-on-surface-variant">
+                  Aucun indicateur.
                 </p>
-                <p className="font-display text-[32px] text-primary">
-                  {formatMetric(metricOf(metrics.data, "training_kpi"), "—")}
-                </p>
-                <p className="text-[10px] text-on-surface-variant font-label-sm">
-                  {trendText(metricOf(metrics.data, "training_kpi"))}
-                  {deltaText(metricOf(metrics.data, "training_kpi")) &&
-                    ` · ${deltaText(metricOf(metrics.data, "training_kpi"))}`}
-                </p>
-              </div>
-              <div className="p-sm bg-card border border-outline-variant text-center">
-                <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
-                  {metricLabel(metricOf(metrics.data, "active_users"), "Missions actives")}
-                </p>
-                <p className="font-display text-[32px] text-primary">
-                  {formatMetric(metricOf(metrics.data, "active_users"), "—")}
-                </p>
-                <p className="text-[10px] text-on-surface-variant font-label-sm">
-                  {trendText(metricOf(metrics.data, "active_users"))}
-                  {deltaText(metricOf(metrics.data, "active_users")) &&
-                    ` · ${deltaText(metricOf(metrics.data, "active_users"))}`}
-                </p>
-              </div>
+              )}
             </div>
-            {isAdmin && <div className="space-y-xs">
-              <label className="font-label-sm text-label-sm text-on-surface-variant block">
-                MODIFIER LE NPS CANDIDATS
-              </label>
-              <div className="flex gap-xs">
-                <input
-                  className="flex-grow bg-card border border-outline-variant p-xs font-label-md focus:outline-none focus:border-primary"
-                  type="number"
-                  value={nps !== "" ? nps : (npsMetric?.value ?? "")}
-                  onChange={(e) => setNps(e.target.value)}
-                />
-                <button
-                  onClick={() =>
-                    saveMetric.mutate({
-                      key: "nps",
-                      value: Number(nps !== "" ? nps : (npsMetric?.value ?? 0)),
-                    })
-                  }
-                  disabled={saveMetric.isPending}
-                  className="bg-primary text-on-primary px-sm font-label-md text-label-md disabled:opacity-50"
-                >
-                  METTRE À JOUR
-                </button>
-              </div>
-              <p className="text-[10px] text-on-surface-variant italic">
-                {npsMetric
-                  ? `Tendance : ${trendText(npsMetric)}${
-                      deltaText(npsMetric) ? ` · ${deltaText(npsMetric)}` : ""
-                    }`
-                  : "Mis à jour à partir des retours candidats."}
-              </p>
-            </div>}
             <div className="mt-auto pt-md">
               <img
                 src={PERF_IMAGE}

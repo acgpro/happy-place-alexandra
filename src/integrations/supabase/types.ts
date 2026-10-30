@@ -223,6 +223,7 @@ export type Database = {
         Row: {
           key: string
           label: string
+          period: Database["public"]["Enums"]["metric_period"]
           unit: string | null
           updated_at: string
           value: number
@@ -230,6 +231,7 @@ export type Database = {
         Insert: {
           key: string
           label: string
+          period: Database["public"]["Enums"]["metric_period"]
           unit?: string | null
           updated_at?: string
           value: number
@@ -237,6 +239,7 @@ export type Database = {
         Update: {
           key?: string
           label?: string
+          period?: Database["public"]["Enums"]["metric_period"]
           unit?: string | null
           updated_at?: string
           value?: number
@@ -440,6 +443,7 @@ export type Database = {
           delta: number | null
           key: string | null
           label: string | null
+          period: Database["public"]["Enums"]["metric_period"] | null
           previous_value: number | null
           trend: string | null
           unit: string | null
@@ -472,6 +476,7 @@ export type Database = {
       app_role: "admin" | "manager" | "collaborateur"
       blocker_severity: "critical" | "warning" | "info"
       blocker_status: "OUVERT" | "EN COURS" | "SURVEILLANCE" | "RÉSOLU"
+      metric_period: "hebdomadaire" | "mensuel" | "trimestriel" | "annuel"
       news_status: "brouillon" | "publiée"
       rejection_category:
         | "à clarifier"
@@ -609,6 +614,7 @@ export const Constants = {
       app_role: ["admin", "manager", "collaborateur"],
       blocker_severity: ["critical", "warning", "info"],
       blocker_status: ["OUVERT", "EN COURS", "SURVEILLANCE", "RÉSOLU"],
+      metric_period: ["hebdomadaire", "mensuel", "trimestriel", "annuel"],
       news_status: ["brouillon", "publiée"],
       rejection_category: [
         "à clarifier",

@@ -60,6 +60,8 @@ export type Metric = {
   trend: "hausse" | "baisse" | "stable";
   previous_value: number | null;
   delta: number | string | null;
+  updated_at: string;
+  period: Enums["metric_period"];
 };
 
 export const TREND_LABELS: Record<Metric["trend"], string> = {
@@ -76,6 +78,22 @@ export function deltaText(m: Pick<Metric, "delta" | "unit"> | undefined): string
   const sign = delta > 0 ? "+" : "−";
   const suffix = m.unit === "%" ? " pts" : m.unit ? ` ${m.unit.trim()}` : "";
   return `${sign}${abs}${suffix}`;
+}
+
+export const METRIC_PERIOD_LABELS: Record<Enums["metric_period"], string> = {
+  hebdomadaire: "Hebdomadaire",
+  mensuel: "Mensuel",
+  trimestriel: "Trimestriel",
+  annuel: "Annuel",
+};
+
+export function metricPeriodLabel(period: Enums["metric_period"]): string {
+  return METRIC_PERIOD_LABELS[period];
+}
+
+/** Date complète en français, ex. « le 30 octobre 2026 ». */
+export function formatFullDate(iso: string): string {
+  return `le ${new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`;
 }
 
 export function formatMetricValue(value: number | string, unit: string | null): string {
@@ -277,7 +295,11 @@ export async function updateBlockerStatus(input: { id: string; status: string })
 }
 
 export async function fetchMetrics(): Promise<Metric[]> {
-  const { data, error } = await db.from("metrics_with_trend").select("*");
+  const { data, error } = await db
+    .from("metrics_with_trend")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .order("label", { ascending: true });
   if (error) throw error;
   return (data ?? []) as Metric[];
 }
@@ -326,6 +348,7 @@ export type MetricInput = {
   label: string;
   value: number;
   unit: string | null;
+  period: Enums["metric_period"];
 };
 
 export async function fetchAllNews(): Promise<News[]> {
