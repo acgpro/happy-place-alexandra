@@ -22,6 +22,7 @@ import {
   createSubmission,
   deleteSubmission,
   fetchAllSubmissions,
+  fetchMyFullName,
   timeAgo,
   type Submission,
   type SubmissionInput,
@@ -52,6 +53,15 @@ const empty: SubmissionInput = { author_name: "", team: "Admin", content: "", st
 
 function ManageSubmissions() {
   const qc = useQueryClient();
+  const { email } = Route.useRouteContext();
+  const myName = useQuery({
+    queryKey: ["allowed_users", "me", email],
+    queryFn: () => fetchMyFullName(email ?? ""),
+    enabled: !!email,
+    retry: false,
+  });
+  // Nom lu dans la base : le champ est alors en lecture seule.
+  const myFullName = myName.data ?? null;
   const [form, setForm] = useState<SubmissionInput | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [toDelete, setToDelete] = useState<Submission | null>(null);
@@ -93,7 +103,8 @@ function ManageSubmissions() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form) return;
-    const res = validate(submissionSchema, { ...form, team: "Admin", status: "en attente" });
+    const author_name = myFullName ?? form.author_name;
+    const res = validate(submissionSchema, { ...form, author_name, team: "Admin", status: "en attente" });
     if (!res.ok) {
       setErrors(res.errors);
       return;
@@ -173,8 +184,10 @@ function ManageSubmissions() {
             <ErrorSummary errors={errors} />
             <Field label="Auteur" error={errors.author_name}>
               <TextInput
-                value={form.author_name}
+                value={myFullName ?? form.author_name}
+                readOnly={!!myFullName}
                 maxLength={80}
+                placeholder="Prénom et nom"
                 onChange={(e) => setForm({ ...form, author_name: e.target.value })}
               />
             </Field>

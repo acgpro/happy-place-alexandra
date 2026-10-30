@@ -176,6 +176,18 @@ export async function fetchSubmissions(): Promise<Submission[]> {
   return (data ?? []) as Submission[];
 }
 
+/** « Prénom Nom » de l'utilisateur, lu dans allowed_users ; null s'il est introuvable. */
+export async function fetchMyFullName(email: string): Promise<string | null> {
+  const { data, error } = await db
+    .from("allowed_users")
+    .select("first_name, last_name")
+    .eq("email", email.toLowerCase())
+    .maybeSingle();
+  if (error) throw error;
+  const name = [data?.first_name, data?.last_name].map((v) => (v ?? "").trim()).filter(Boolean).join(" ");
+  return name || null;
+}
+
 export async function fetchMySubmissions(email: string): Promise<Submission[]> {
   const { data, error } = await db
     .from("submissions")

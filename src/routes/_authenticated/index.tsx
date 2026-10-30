@@ -25,6 +25,7 @@ import {
   fetchNews,
   fetchSubmissions,
   fetchMySubmissions,
+  fetchMyFullName,
   fetchResponses,
   exportMyRecentSubmissions,
   REJECTION_CATEGORIES,
@@ -204,6 +205,18 @@ function ManagerSpace() {
     const authorRole = authorRoles.data?.get(author);
     return authorRole === "manager" || authorRole === "admin";
   }
+  const myNameQuery = useQuery({
+    queryKey: ["allowed_users", "me", email],
+    queryFn: () => fetchMyFullName(email ?? ""),
+    enabled: !!email,
+    retry: false,
+  });
+  // Nom lu dans la base : le champ « Nom » est alors en lecture seule.
+  const myFullName = myNameQuery.data ?? null;
+  // File de validation : jamais ses propres idées.
+  const pendingForMe = (submissions.data ?? []).filter(
+    (s) => !myEmail || (s.submitted_by_email ?? "").toLowerCase() !== myEmail,
+  );
   const blockers = useQuery({ queryKey: ["blockers"], queryFn: fetchBlockers, retry: false });
   const metrics = useQuery({ queryKey: ["metrics"], queryFn: fetchMetrics, retry: false });
   const onError = (e: unknown) => toast.error((e as Error).message);
@@ -319,7 +332,8 @@ function ManagerSpace() {
     // Collaborators: team is set server-side from their account
     // Admin: always the « Admin » team (set server-side); manager: one of their teams
     const team = role === "collaborateur" ? "auto" : role === "admin" ? "Admin" : submissionForm.team;
-    const result = validate(submissionSchema, { ...submissionForm, team, status: "en attente" });
+    const author_name = myFullName ?? submissionForm.author_name;
+    const result = validate(submissionSchema, { ...submissionForm, author_name, team, status: "en attente" });
     if (!result.ok) {
       setSubmissionErrors(result.errors);
       return;
@@ -380,7 +394,7 @@ function ManagerSpace() {
 
         <div className="bento-grid">
           {/* News Management & Input */}
-          <section className="col-span-12 lg:col-span-8 bg-surface-container-lowest border border-outline-variant p-md flex flex-col gap-md">
+          <section className={`col-span-12 ${canReview ? "lg:col-span-8" : "lg:col-span-12"} bg-surface-container-lowest border border-outline-variant p-md flex flex-col gap-md`}>
             <div className="flex items-center justify-between border-b border-outline-variant pb-sm">
               <h2 className="font-headline-sm text-headline-sm text-primary">
                 Actualités du cabinet
@@ -583,13 +597,13 @@ function ManagerSpace() {
           </section>
 
           {/* Pending Submissions */}
-          <section className="col-span-12 lg:col-span-4 min-w-0 bg-surface-container-lowest border border-outline-variant p-md flex flex-col">
+          {canReview && <section className="col-span-12 lg:col-span-4 min-w-0 bg-surface-container-lowest border border-outline-variant p-md flex flex-col">
             <div className="flex items-center justify-between border-b border-outline-variant pb-sm mb-md">
               <h2 className="font-headline-sm text-headline-sm text-primary">
                 Idées en attente
               </h2>
               <div className="bg-tertiary-fixed text-on-tertiary-fixed px-xs py-1 rounded-full font-label-sm text-label-sm">
-                {submissions.data?.length ?? 0} NOUVELLES
+                {pendingForMe.length} NOUVELLES
               </div>
             </div>
             <div className="space-y-sm flex-grow min-w-0">
@@ -598,12 +612,12 @@ function ManagerSpace() {
                   Les idées sont indisponibles.
                 </p>
               )}
-              {submissions.data?.length === 0 && (
+              {submissions.data && pendingForMe.length === 0 && (
                 <p className="text-body-sm text-on-surface-variant italic">
                   Aucune idée en attente.
                 </p>
               )}
-              {submissions.data?.map((s) => (
+              {pendingForMe.map((s) => (
                 <div
                   key={s.id}
                   className="p-sm border border-outline-variant bg-card space-y-sm min-w-0 overflow-hidden"
@@ -639,7 +653,7 @@ function ManagerSpace() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>}
 
           {/* Mes soumissions */}
           {mine.data && mine.data.length > 0 && (
@@ -935,9 +949,10 @@ function ManagerSpace() {
             <ErrorSummary errors={submissionErrors} />
             <Field label="Nom" error={submissionErrors.author_name}>
               <TextInput
-                value={submissionForm.author_name}
+                value={myFullName ?? submissionForm.author_name}
+                readOnly={!!myFullName}
                 maxLength={80}
-                placeholder="Ton nom"
+                placeholder="Prénom et nom"
                 onChange={(e) => setSubmissionForm({ ...submissionForm, author_name: e.target.value })}
               />
             </Field>
