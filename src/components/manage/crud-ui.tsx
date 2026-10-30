@@ -56,7 +56,13 @@ export function Field({
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   const field = useFieldProps();
-  return <input {...field} {...props} className={`${inputBase} ${props.className ?? ""}`} />;
+  return (
+    <input
+      {...field}
+      {...props}
+      className={`${inputBase} read-only:bg-surface-container read-only:cursor-default ${props.className ?? ""}`}
+    />
+  );
 }
 
 export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
