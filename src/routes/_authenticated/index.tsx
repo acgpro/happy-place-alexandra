@@ -339,7 +339,7 @@ function ManagerSpace() {
                   TITRE
                 </label>
                 <input
-                  className="w-full bg-transparent border-b border-outline-variant focus:border-primary focus:outline-none transition-colors font-headline-sm text-headline-sm px-0 py-xs"
+                  className="w-full bg-transparent border-b border-outline-variant focus:border-primary transition-colors font-headline-sm text-headline-sm px-0 py-xs"
                    placeholder="Saisis un titre…"
                   type="text"
                   value={title}
@@ -351,7 +351,7 @@ function ManagerSpace() {
                   CONTENU
                 </label>
                 <textarea
-                  className="w-full bg-card border border-outline-variant focus:border-primary focus:outline-none p-sm font-body-md"
+                  className="w-full bg-card border border-outline-variant focus:border-primary p-sm font-body-md"
                    placeholder="Rédige l'actualité…"
                   rows={4}
                   value={body}
@@ -661,7 +661,7 @@ function ManagerSpace() {
                       value={b.status}
                       disabled={!isAdmin}
                       onChange={(e) => setBlocker.mutate({ id: b.id, status: e.target.value })}
-                      className={`bg-transparent border-none text-xs font-label-sm focus:outline-none cursor-pointer ${critical ? "text-error" : "text-on-surface-variant"}`}
+                      className={`bg-transparent border-none text-xs font-label-sm cursor-pointer ${critical ? "text-error" : "text-on-surface-variant"}`}
                     >
                       <option>OUVERT</option>
                       <option>EN COURS</option>

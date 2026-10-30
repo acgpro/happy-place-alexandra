@@ -143,6 +143,12 @@
     color: var(--color-foreground);
     font-family: var(--font-body-md);
   }
+
+  /* Contour de focus clavier (WCAG 2.2, critère 2.4.7). */
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
 }
 
 @utility bento-grid {

@@ -10,7 +10,7 @@ export function ManageIcon({ name, className = "" }: { name: string; className?:
 }
 
 const inputBase =
-  "w-full bg-card border border-outline-variant focus:border-primary focus:outline-none p-sm font-body-md text-on-surface";
+  "w-full bg-card border border-outline-variant focus:border-primary p-sm font-body-md text-on-surface";
 
 export function Field({
   label,
