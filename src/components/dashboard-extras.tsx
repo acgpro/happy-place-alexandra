@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AttachmentLink } from "@/components/attachment-link";
 import { SubmissionPreview, formatExactDate } from "@/components/expandable-card";
-import { fetchResolvedBlockers, fetchValidatedSubmissions, type Submission } from "@/lib/dashboard";
+import { ResponseBlock } from "@/components/submission-response";
+import { fetchResolvedBlockers, fetchResponses, fetchValidatedSubmissions, type Submission } from "@/lib/dashboard";
 
 /** Fenêtre « Archive des points bloquants » (lecture seule, statut RÉSOLU). */
 export function BlockerArchive({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -84,6 +85,14 @@ export function ValidatedSubmissions({
   );
   const filtered = (q.data ?? []).filter((s) => !team || s.team === team);
   const shown = filtered.slice(0, limit);
+  const ids = (q.data ?? []).map((s) => s.id);
+  // Réponses lisibles seulement : la base filtre selon la visibilité choisie.
+  const responses = useQuery({
+    queryKey: ["responses", ids],
+    queryFn: () => fetchResponses(ids),
+    enabled: ids.length > 0,
+    retry: false,
+  });
 
   return (
     <section className="col-span-12 min-w-0 bg-surface-container-lowest border border-outline-variant p-md">
@@ -115,6 +124,10 @@ export function ValidatedSubmissions({
               {s.validated_at ? `Validée le ${formatExactDate(s.validated_at)}` : `Soumise le ${formatExactDate(s.created_at)}`}
             </p>
             <SubmissionPreview content={s.content} onOpen={() => onRead(s)} />
+            {(() => {
+              const response = responses.data?.find((r) => r.submission_id === s.id);
+              return response ? <ResponseBlock response={response} /> : null;
+            })()}
             {s.attachment_path &&
               (canReadAttachment(s, { role, email, managerTeams }) ? (
                 <AttachmentLink path={s.attachment_path} name={s.attachment_name} />

@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/manage")({
       {
         name: "description",
         content:
-          "Gérer les actualités du cabinet, les propositions internes, les alertes sur les recrutements et les indicateurs de performance.",
+          "Gérer les actualités du cabinet, les idées internes, les alertes sur les recrutements et les indicateurs de performance.",
       },
       { property: "og:title", content: "Gestion des données — Happy Place" },
       {
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/manage")({
 
 const tabs = [
   { to: "/manage/news", label: "ACTUALITÉS" },
-  { to: "/manage/submissions", label: "SOUMISSIONS" },
+  { to: "/manage/submissions", label: "IDÉES" },
   { to: "/manage/blockers", label: "POINTS BLOQUANTS" },
   { to: "/manage/metrics", label: "INDICATEURS" },
   { to: "/manage/users", label: "UTILISATEURS AUTORISÉS" },

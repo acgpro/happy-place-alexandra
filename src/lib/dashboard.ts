@@ -34,6 +34,17 @@ export type Submission = {
   attachment_name?: string | null;
 };
 
+export type ResponseVisibility = Enums["response_visibility"];
+
+export type SubmissionResponse = {
+  submission_id: string;
+  body: string;
+  visibility: ResponseVisibility;
+  responded_by_name: string;
+  responded_by_role: Enums["app_role"];
+  responded_at: string;
+};
+
 export const REJECTION_CATEGORIES = [
   "à clarifier",
   "en désaccord avec les process",
@@ -223,20 +234,54 @@ export async function exportMyRecentSubmissions(email: string): Promise<number> 
   return rows.length;
 }
 
+const REVIEW_FORBIDDEN_MSG = "Vous ne pouvez pas valider ou refuser cette idée";
+
 export async function reviewSubmission(
   input:
-    | { id: string; status: "validée" }
+    | { id: string; status: "validée"; response: { body: string; visibility: ResponseVisibility } }
     | { id: string; status: "refusée"; rejection_category: RejectionCategory; rejection_note: string },
 ) {
+  if (input.status === "validée") {
+    // La base exige la réponse avant le passage au statut « validée ».
+    const { error: responseError } = await db.from("submission_responses").upsert(
+      {
+        submission_id: input.id,
+        body: input.response.body.trim(),
+        visibility: input.response.visibility,
+        // Valeurs provisoires, remplacées par le déclencheur set_response_author.
+        responded_by_email: "",
+        responded_by_name: "",
+        responded_by_role: "collaborateur",
+      },
+      { onConflict: "submission_id" },
+    );
+    if (responseError) {
+      if (responseError.code === "42501") throw new Error(REVIEW_FORBIDDEN_MSG);
+      throw responseError;
+    }
+  }
   const patch =
     input.status === "refusée"
       ? { status: input.status, rejection_category: input.rejection_category, rejection_note: input.rejection_note.trim() }
       : { status: input.status, rejection_category: null, rejection_note: null };
-  const { error } = await db
+  const { data, error } = await db
     .from("submissions")
     .update(patch)
-    .eq("id", input.id);
+    .eq("id", input.id)
+    .select("id");
   if (error) throw error;
+  if (!data?.length) throw new Error(REVIEW_FORBIDDEN_MSG);
+}
+
+/** Réponses lisibles pour ces idées (filtrées par les règles d'accès de la base). */
+export async function fetchResponses(ids: string[]): Promise<SubmissionResponse[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await db
+    .from("submission_responses")
+    .select("submission_id, body, visibility, responded_by_name, responded_by_role, responded_at")
+    .in("submission_id", ids);
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function fetchBlockers(): Promise<Blocker[]> {

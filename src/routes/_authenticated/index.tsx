@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ErrorSummary, Field, FormActions, Modal, TextArea, TextInput } from "@/components/manage/crud-ui";
-import { rejectionSchema, submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
+import { ErrorSummary, Field, FormActions, Modal, TextArea, TextInput, useFieldProps } from "@/components/manage/crud-ui";
+import { rejectionSchema, responseSchema, submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import { BrandHeader } from "@/components/brand-header";
 import { AttachmentLink } from "@/components/attachment-link";
-import { CharCounter, SubmissionPreview, rejectionErrorMessage } from "@/components/expandable-card";
+import { CharCounter, SubmissionPreview, formatExactDate, rejectionErrorMessage } from "@/components/expandable-card";
 import { Linkify } from "@/components/linkify";
 import { SubmissionReader } from "@/components/submission-reader";
+import { ResponseBlock } from "@/components/submission-response";
 import { NewsReader } from "@/components/news-reader";
 import { DepartureNotices } from "@/components/departure-notices";
 import { NewsImage, NewsLinks, NewsMediaEditor } from "@/components/news-media";
@@ -24,9 +25,11 @@ import {
   fetchNews,
   fetchSubmissions,
   fetchMySubmissions,
+  fetchResponses,
   exportMyRecentSubmissions,
   REJECTION_CATEGORIES,
   type News,
+  type ResponseVisibility,
   type Submission,
   saveDraftNews,
   publishDraftNews,
@@ -49,7 +52,7 @@ export const Route = createFileRoute("/_authenticated/")({
       {
         name: "description",
         content:
-          "Pilotez les missions de recrutement IT et digital, les propositions des équipes, les alertes opérationnelles et les indicateurs du cabinet.",
+          "Pilotez les missions de recrutement IT et digital, les idées des équipes, les alertes opérationnelles et les indicateurs du cabinet.",
       },
       { property: "og:title", content: "Happy Place — Vue d'ensemble" },
       {
@@ -72,6 +75,31 @@ function Icon({ name, className = "" }: { name: string; className?: string }) {
     <span aria-hidden="true" className={`material-symbols-outlined ${className}`}>
       {name}
     </span>
+  );
+}
+
+/** Transmet à un champ natif les attributs de son Field (libellé et message d'erreur reliés). */
+function WithFieldProps({ children }: { children: (field: ReturnType<typeof useFieldProps>) => React.ReactNode }) {
+  return <>{children(useFieldProps())}</>;
+}
+
+/** Liste des motifs de refus, reliée à son libellé et à son message d'erreur. */
+function RejectionCategorySelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const field = useFieldProps();
+  return (
+    <select
+      {...field}
+      className="w-full border border-outline-variant bg-card p-xs text-body-sm"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">— Choisir un motif —</option>
+      {REJECTION_CATEGORIES.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -125,6 +153,12 @@ function ManagerSpace() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [rejectForm, setRejectForm] = useState({ rejection_category: "", rejection_note: "" });
   const [rejectErrors, setRejectErrors] = useState<FieldErrors>({});
+  const [validating, setValidating] = useState<Submission | null>(null);
+  const [responseForm, setResponseForm] = useState<{ body: string; visibility: ResponseVisibility }>({
+    body: "",
+    visibility: "auteur",
+  });
+  const [responseErrors, setResponseErrors] = useState<FieldErrors>({});
 
   const news = useQuery({ queryKey: ["news"], queryFn: fetchNews, retry: false });
   const submissions = useQuery({
@@ -138,6 +172,38 @@ function ManagerSpace() {
     enabled: !!email,
     retry: false,
   });
+  const myIds = mine.data?.map((s) => s.id) ?? [];
+  const myResponses = useQuery({
+    queryKey: ["responses", myIds],
+    queryFn: () => fetchResponses(myIds),
+    enabled: myIds.length > 0,
+    retry: false,
+  });
+  // Admin : rôle des auteurs affichés, pour ne proposer que les idées de managers et d'admins.
+  const authorEmails = [
+    ...new Set((submissions.data ?? []).map((s) => (s.submitted_by_email ?? "").toLowerCase()).filter(Boolean)),
+  ].sort();
+  const authorRoles = useQuery({
+    queryKey: ["allowed_users", "roles", authorEmails],
+    enabled: isAdmin && authorEmails.length > 0,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("allowed_users")
+        .select("email, allowed_user_roles(role)")
+        .in("email", authorEmails);
+      if (error) throw error;
+      return new Map((data ?? []).map((u) => [u.email.toLowerCase(), u.allowed_user_roles?.role ?? "collaborateur"]));
+    },
+  });
+  /** Boutons VALIDER / REFUSER : personne ne traite sa propre idée ; l'admin traite celles des managers et des admins. */
+  function canActOn(s: Submission) {
+    const author = (s.submitted_by_email ?? "").toLowerCase();
+    if (!canReview || !author || author === myEmail) return false;
+    if (!isAdmin) return true;
+    const authorRole = authorRoles.data?.get(author);
+    return authorRole === "manager" || authorRole === "admin";
+  }
   const blockers = useQuery({ queryKey: ["blockers"], queryFn: fetchBlockers, retry: false });
   const metrics = useQuery({ queryKey: ["metrics"], queryFn: fetchMetrics, retry: false });
   const onError = (e: unknown) => toast.error((e as Error).message);
@@ -149,10 +215,10 @@ function ManagerSpace() {
     },
     onSuccess: (count) => {
       if (count === 0) {
-        toast.info("Aucune soumission en attente ou validée sur les 30 derniers jours.");
+        toast.info("Aucune idée en attente ou validée sur les 30 derniers jours.");
         return;
       }
-      toast.success(`${count} soumission${count > 1 ? "s" : ""} exportée${count > 1 ? "s" : ""} au format CSV.`);
+      toast.success(`${count} idée${count > 1 ? "s" : ""} exportée${count > 1 ? "s" : ""} au format CSV.`);
     },
     onError,
   });
@@ -194,9 +260,12 @@ function ManagerSpace() {
     onSuccess: (_d, vars) => {
       if (vars.status === "refusée") {
         setRejecting(null);
-        toast.success("Soumission refusée");
+        toast.success("Idée refusée");
       } else {
+        setValidating(null);
         setReading((r) => (r?.id === vars.id ? null : r));
+        toast.success("Idée validée");
+        qc.invalidateQueries({ queryKey: ["responses"] });
       }
       qc.invalidateQueries({ queryKey: ["submissions"] });
     },
@@ -210,6 +279,13 @@ function ManagerSpace() {
     setRejectForm({ rejection_category: "", rejection_note: "" });
   }
 
+  function startValidate(s: Submission) {
+    setReading(null);
+    setValidating(s);
+    setResponseErrors({});
+    setResponseForm({ body: "", visibility: "auteur" });
+  }
+
   const submit = useMutation({
     mutationFn: (input: SubmissionInput) => submitIdea({
       author_name: input.author_name,
@@ -220,7 +296,7 @@ function ManagerSpace() {
       setSubmissionForm(null);
       setAttachment(null);
       setSubmissionErrors({});
-      toast.success("Soumission envoyée");
+      toast.success("Idée envoyée");
       qc.invalidateQueries({ queryKey: ["submissions"] });
     },
     onError: (e: unknown) => toast.error(rejectionErrorMessage(e)),
@@ -510,7 +586,7 @@ function ManagerSpace() {
           <section className="col-span-12 lg:col-span-4 min-w-0 bg-surface-container-lowest border border-outline-variant p-md flex flex-col">
             <div className="flex items-center justify-between border-b border-outline-variant pb-sm mb-md">
               <h2 className="font-headline-sm text-headline-sm text-primary">
-                Soumissions en attente
+                Idées en attente
               </h2>
               <div className="bg-tertiary-fixed text-on-tertiary-fixed px-xs py-1 rounded-full font-label-sm text-label-sm">
                 {submissions.data?.length ?? 0} NOUVELLES
@@ -519,12 +595,12 @@ function ManagerSpace() {
             <div className="space-y-sm flex-grow min-w-0">
               {submissions.isError && (
                 <p className="text-body-sm text-error">
-                  Les soumissions sont indisponibles.
+                  Les idées sont indisponibles.
                 </p>
               )}
               {submissions.data?.length === 0 && (
                 <p className="text-body-sm text-on-surface-variant italic">
-                  Aucune soumission en attente.
+                  Aucune idée en attente.
                 </p>
               )}
               {submissions.data?.map((s) => (
@@ -546,7 +622,7 @@ function ManagerSpace() {
                   </div>
                   <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
                   <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
-                  {canReview && <div className="flex gap-xs pt-xs">
+                  {canActOn(s) && <div className="flex gap-xs pt-xs">
                     <button
                       onClick={() => startReject(s)}
                       className="flex-1 py-1 border border-outline text-primary font-label-sm text-label-sm hover:bg-surface-container transition-colors"
@@ -554,7 +630,7 @@ function ManagerSpace() {
                       REFUSER
                     </button>
                     <button
-                      onClick={() => review.mutate({ id: s.id, status: "validée" })}
+                      onClick={() => startValidate(s)}
                       className="flex-1 py-1 bg-primary text-on-primary font-label-sm text-label-sm hover:opacity-90 transition-colors"
                     >
                       VALIDER
@@ -569,7 +645,7 @@ function ManagerSpace() {
           {mine.data && mine.data.length > 0 && (
             <section className="col-span-12 min-w-0 bg-surface-container-lowest border border-outline-variant p-md">
               <h2 className="font-headline-sm text-headline-sm text-primary border-b border-outline-variant pb-sm mb-md">
-                Mes soumissions
+                Mes idées
               </h2>
               <div className="space-y-xs">
                 {mine.data.map((s) => (
@@ -579,6 +655,19 @@ function ManagerSpace() {
                     <p className="text-[11px] font-label-sm text-on-surface-variant uppercase mt-xs">
                       {s.status} • {s.team} • {timeAgo(s.created_at)}
                     </p>
+                    {s.status === "en attente" && (
+                      <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">Pas encore de réponse</p>
+                    )}
+                    {s.status === "validée" &&
+                      (() => {
+                        const response = myResponses.data?.find((r) => r.submission_id === s.id);
+                        if (response) return <ResponseBlock response={response} className="mt-xs" />;
+                        return myResponses.isSuccess ? (
+                          <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
+                            Aucune réponse enregistrée
+                          </p>
+                        ) : null;
+                      })()}
                     {s.status === "refusée" && s.rejection_category && (
                       <div className="mt-xs p-xs bg-error-container text-on-error-container text-body-sm wrap-anywhere">
                         <p className="font-bold">Motif : {s.rejection_category}</p>
@@ -729,16 +818,16 @@ function ManagerSpace() {
       <SubmissionReader
         submission={reading}
         onClose={() => setReading(null)}
-        onReject={reading && canReview && reading.status === "en attente" ? () => startReject(reading) : undefined}
+        onReject={reading && canActOn(reading) && reading.status === "en attente" ? () => startReject(reading) : undefined}
         onApprove={
-          reading && canReview && reading.status === "en attente"
-            ? () => review.mutate({ id: reading.id, status: "validée" })
+          reading && canActOn(reading) && reading.status === "en attente"
+            ? () => startValidate(reading)
             : undefined
         }
         approving={review.isPending}
       />
       {rejecting && (
-        <Modal title="Refuser la soumission" onClose={() => setRejecting(null)}>
+        <Modal title="Refuser l'idée du collaborateur" onClose={() => setRejecting(null)}>
           <form
             noValidate
             className="space-y-sm"
@@ -753,22 +842,16 @@ function ManagerSpace() {
             <p className="max-h-48 overflow-y-auto border border-outline-variant bg-surface-container-low p-xs text-body-sm italic text-on-surface-variant whitespace-pre-line wrap-anywhere">“{rejecting.content}”</p>
             <ErrorSummary errors={rejectErrors} />
             <Field label="Motif du refus" error={rejectErrors.rejection_category}>
-              <select
-                className="w-full border border-outline-variant bg-card p-xs text-body-sm"
+              <RejectionCategorySelect
                 value={rejectForm.rejection_category}
-                onChange={(e) => setRejectForm({ ...rejectForm, rejection_category: e.target.value })}
-              >
-                <option value="">— Choisir un motif —</option>
-                {REJECTION_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                onChange={(v) => setRejectForm({ ...rejectForm, rejection_category: v })}
+              />
             </Field>
             <Field label="Raison du refus (obligatoire)" error={rejectErrors.rejection_note}>
               <TextArea
                 rows={4}
                 value={rejectForm.rejection_note}
-                placeholder="Explique au collaborateur pourquoi sa soumission est refusée…"
+                placeholder="Explique au collaborateur pourquoi son idée est refusée…"
                 onChange={(e) => setRejectForm({ ...rejectForm, rejection_note: e.target.value })}
               />
               <CharCounter value={rejectForm.rejection_note} max={500} />
@@ -777,8 +860,77 @@ function ManagerSpace() {
           </form>
         </Modal>
       )}
+      {validating && (
+        <Modal title="Valider l'idée de mon collaborateur" onClose={() => setValidating(null)}>
+          <form
+            noValidate
+            className="space-y-sm"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const res = validate(responseSchema, responseForm);
+              if (!res.ok) return setResponseErrors(res.errors);
+              setResponseErrors({});
+              review.mutate({ id: validating.id, status: "validée", response: res.data });
+            }}
+          >
+            <p className="max-h-48 overflow-y-auto border border-outline-variant bg-surface-container-low p-xs text-body-sm italic text-on-surface-variant whitespace-pre-line wrap-anywhere">
+              “{validating.content}”
+            </p>
+            <p className="text-[11px] font-label-sm text-on-surface-variant uppercase wrap-anywhere">
+              <span className="text-primary font-bold">{validating.author_name}</span> •{" "}
+              {validating.team} • Soumise le {formatExactDate(validating.created_at)}
+            </p>
+            <ErrorSummary errors={responseErrors} />
+            <Field label="Réponse à l'auteur" error={responseErrors.body}>
+              <TextArea
+                rows={4}
+                value={responseForm.body}
+                placeholder="Explique au collaborateur la suite donnée à son idée…"
+                onChange={(e) => setResponseForm({ ...responseForm, body: e.target.value })}
+              />
+              <CharCounter value={responseForm.body} max={500} />
+            </Field>
+            <fieldset className="space-y-xs">
+              <legend className="font-label-sm text-label-sm text-on-surface-variant uppercase block">
+                Visibilité de la réponse
+              </legend>
+              {(
+                [
+                  { value: "auteur", label: "Visible par l'auteur seulement" },
+                  { value: "entreprise", label: "Visible par toute l'entreprise" },
+                ] as const
+              ).map((o) => (
+                <label
+                  key={o.value}
+                  className={`flex cursor-pointer gap-sm border p-sm ${
+                    responseForm.visibility === o.value
+                      ? "border-primary bg-surface-container"
+                      : "border-outline-variant"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="response-visibility"
+                    value={o.value}
+                    checked={responseForm.visibility === o.value}
+                    onChange={() => setResponseForm({ ...responseForm, visibility: o.value })}
+                    className="mt-1 accent-[var(--color-primary)]"
+                  />
+                  <span className="font-body-sm text-body-sm text-on-surface">{o.label}</span>
+                </label>
+              ))}
+            </fieldset>
+            <FormActions
+              pending={review.isPending}
+              disabled={!responseForm.body.trim()}
+              submitLabel="VALIDER ET ENVOYER"
+              onCancel={() => setValidating(null)}
+            />
+          </form>
+        </Modal>
+      )}
       {submissionForm && (
-        <Modal title="Soumettre une proposition" onClose={() => setSubmissionForm(null)}>
+        <Modal title="Soumettre une idée" onClose={() => setSubmissionForm(null)}>
           <form onSubmit={sendSubmission} className="space-y-sm" noValidate>
             <ErrorSummary errors={submissionErrors} />
             <Field label="Nom" error={submissionErrors.author_name}>
@@ -791,23 +943,28 @@ function ManagerSpace() {
             </Field>
             {role === "manager" && (
               <Field label="Équipe" error={submissionErrors.team}>
-                <select
-                  required
-                  value={submissionForm.team}
-                  onChange={(e) => setSubmissionForm({ ...submissionForm, team: e.target.value })}
-                  className="w-full border border-outline-variant bg-surface px-sm py-xs font-body-md"
-                >
-                  <option value="">Choisis une de tes équipes</option>
-                  {myTeams.data?.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <WithFieldProps>
+                  {(field) => (
+                    <select
+                      {...field}
+                      required
+                      value={submissionForm.team}
+                      onChange={(e) => setSubmissionForm({ ...submissionForm, team: e.target.value })}
+                      className="w-full border border-outline-variant bg-surface px-sm py-xs font-body-md"
+                    >
+                      <option value="">Choisis une de tes équipes</option>
+                      {myTeams.data?.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  )}
+                </WithFieldProps>
               </Field>
             )}
             {role === "admin" && (
               <p className="text-body-sm text-on-surface-variant">Équipe : Admin</p>
             )}
-            <Field label="Proposition" error={submissionErrors.content}>
+            <Field label="Idée" error={submissionErrors.content}>
               <TextArea
                 rows={5}
                 value={submissionForm.content}
@@ -817,25 +974,30 @@ function ManagerSpace() {
               <CharCounter value={submissionForm.content} max={2000} min={5} />
             </Field>
             <Field label="Document PDF (optionnel, 20 Mo max)" error={submissionErrors.attachment}>
-              <input
-                type="file"
-                accept="application/pdf,.pdf"
-                className="block w-full text-body-sm"
-                onChange={(e) => {
-                  const f = e.target.files?.[0] ?? null;
-                  if (f && f.type !== "application/pdf") {
-                    setSubmissionErrors({ ...submissionErrors, attachment: "Seuls les fichiers PDF sont acceptés." });
-                    e.target.value = ""; setAttachment(null); return;
-                  }
-                  if (f && f.size > 20 * 1024 * 1024) {
-                    setSubmissionErrors({ ...submissionErrors, attachment: "Le fichier dépasse 20 Mo." });
-                    e.target.value = ""; setAttachment(null); return;
-                  }
-                  const { attachment: _a, ...rest } = submissionErrors;
-                  setSubmissionErrors(rest);
-                  setAttachment(f);
-                }}
-              />
+              <WithFieldProps>
+                {(field) => (
+                  <input
+                    {...field}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    className="block w-full text-body-sm"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      if (f && f.type !== "application/pdf") {
+                        setSubmissionErrors({ ...submissionErrors, attachment: "Seuls les fichiers PDF sont acceptés." });
+                        e.target.value = ""; setAttachment(null); return;
+                      }
+                      if (f && f.size > 20 * 1024 * 1024) {
+                        setSubmissionErrors({ ...submissionErrors, attachment: "Le fichier dépasse 20 Mo." });
+                        e.target.value = ""; setAttachment(null); return;
+                      }
+                      const { attachment: _a, ...rest } = submissionErrors;
+                      setSubmissionErrors(rest);
+                      setAttachment(f);
+                    }}
+                  />
+                )}
+              </WithFieldProps>
             </Field>
             <FormActions
               pending={submit.isPending}

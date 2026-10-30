@@ -1,8 +1,10 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useQuery } from "@tanstack/react-query";
 import { Linkify } from "@/components/linkify";
 import { AttachmentLink } from "@/components/attachment-link";
 import { formatExactDate } from "@/components/expandable-card";
-import type { Submission } from "@/lib/dashboard";
+import { ResponseBlock } from "@/components/submission-response";
+import { fetchResponses, type Submission } from "@/lib/dashboard";
 
 /** Grande fenêtre de lecture d'une soumission (focus piégé, Échap, clic fond). */
 export function SubmissionReader({
@@ -20,6 +22,14 @@ export function SubmissionReader({
   onApprove?: () => void;
   approving?: boolean;
 }) {
+  const ids = s ? [s.id] : [];
+  const responses = useQuery({
+    queryKey: ["responses", ids],
+    queryFn: () => fetchResponses(ids),
+    enabled: !!s,
+    retry: false,
+  });
+  const response = responses.data?.find((r) => r.submission_id === s?.id);
   return (
     <DialogPrimitive.Root open={!!s} onOpenChange={(o) => !o && onClose()}>
       <DialogPrimitive.Portal>
@@ -55,6 +65,7 @@ export function SubmissionReader({
                   <p className="whitespace-pre-line">Raison : <Linkify text={s.rejection_note ?? ""} /></p>
                 </div>
               )}
+              {response && <ResponseBlock response={response} />}
             </div>
             {(onReject || onApprove) && (
               <div className="flex gap-xs border-t border-outline-variant p-md">

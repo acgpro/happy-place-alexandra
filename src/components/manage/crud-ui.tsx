@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useRef, type ReactNode } from "react";
 import type { FieldErrors } from "@/lib/manage-schemas";
 
 export function ManageIcon({ name, className = "" }: { name: string; className?: string }) {
@@ -12,6 +12,20 @@ export function ManageIcon({ name, className = "" }: { name: string; className?:
 const inputBase =
   "w-full bg-card border border-outline-variant focus:border-primary p-sm font-body-md text-on-surface";
 
+/** Identifiants du champ courant : relie le libellé et le message d'erreur au contrôle. */
+const FieldContext = createContext<{ id: string; errorId?: string } | null>(null);
+
+/** Attributs à poser sur le contrôle d'un Field (id, aria-describedby, aria-invalid). */
+export function useFieldProps() {
+  const field = useContext(FieldContext);
+  if (!field) return {};
+  return {
+    id: field.id,
+    "aria-describedby": field.errorId,
+    "aria-invalid": field.errorId ? true : undefined,
+  };
+}
+
 export function Field({
   label,
   error,
@@ -21,31 +35,38 @@ export function Field({
   error?: string;
   children: ReactNode;
 }) {
+  const id = useId();
+  const errorId = `${id}-error`;
   return (
-    <div className="space-y-xs">
-      <label className="font-label-sm text-label-sm text-on-surface-variant uppercase block">
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <p role="alert" className="text-body-sm text-error">
-          {error}
-        </p>
-      ) : null}
-    </div>
+    <FieldContext.Provider value={{ id, errorId: error ? errorId : undefined }}>
+      <div className="space-y-xs">
+        <label htmlFor={id} className="font-label-sm text-label-sm text-on-surface-variant uppercase block">
+          {label}
+        </label>
+        {children}
+        {error ? (
+          <p id={errorId} role="alert" className="text-body-sm text-error">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </FieldContext.Provider>
   );
 }
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`${inputBase} ${props.className ?? ""}`} />;
+  const field = useFieldProps();
+  return <input {...field} {...props} className={`${inputBase} ${props.className ?? ""}`} />;
 }
 
 export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={`${inputBase} ${props.className ?? ""}`} />;
+  const field = useFieldProps();
+  return <textarea {...field} {...props} className={`${inputBase} ${props.className ?? ""}`} />;
 }
 
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${inputBase} ${props.className ?? ""}`} />;
+  const field = useFieldProps();
+  return <select {...field} {...props} className={`${inputBase} ${props.className ?? ""}`} />;
 }
 
 const FIELD_SELECTOR =
@@ -153,10 +174,12 @@ export function FormActions({
   pending,
   onCancel,
   submitLabel = "ENREGISTRER",
+  disabled,
 }: {
   pending?: boolean;
   onCancel: () => void;
   submitLabel?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex justify-end gap-xs pt-sm">
@@ -169,7 +192,7 @@ export function FormActions({
       </button>
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || disabled}
         className="px-lg py-xs bg-primary text-on-primary font-label-md text-label-md disabled:opacity-50"
       >
         {pending ? "…" : submitLabel}
@@ -198,19 +221,21 @@ export function RowActions({
   onDelete,
   deleting,
 }: {
-  onEdit: () => void;
+  onEdit?: () => void;
   onDelete: () => void;
   deleting?: boolean;
 }) {
   return (
     <div className="flex gap-xs shrink-0">
-      <button
-        type="button"
-        onClick={onEdit}
-        className="px-sm py-1 border border-outline text-primary font-label-sm text-label-sm hover:bg-surface-container"
-      >
-        MODIFIER
-      </button>
+      {onEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="px-sm py-1 border border-outline text-primary font-label-sm text-label-sm hover:bg-surface-container"
+        >
+          MODIFIER
+        </button>
+      )}
       <button
         type="button"
         onClick={onDelete}
