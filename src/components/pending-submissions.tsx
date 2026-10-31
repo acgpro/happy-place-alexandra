@@ -244,7 +244,7 @@ export function PendingSubmissions({
                 <button
                   type="button"
                   onClick={() => startReject(s)}
-                  className="shrink-0 min-h-[44px] px-md border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-colors"
+                  className="shrink-0 box-border inline-flex h-[44px] min-w-[7.5rem] items-center justify-center whitespace-nowrap border px-md py-0 font-label-md text-label-md transition-colors border-outline text-primary hover:bg-surface-container"
                 >
                   REFUSER
                 </button>
@@ -257,7 +257,7 @@ export function PendingSubmissions({
                 <button
                   type="button"
                   onClick={() => startValidate(s)}
-                  className="min-h-[44px] px-md border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-colors"
+                  className="box-border inline-flex h-[44px] min-w-[7.5rem] items-center justify-center whitespace-nowrap border px-md py-0 font-label-md text-label-md transition-colors border-primary bg-primary text-on-primary hover:opacity-90"
                 >
                   VALIDER
                 </button>
