@@ -342,18 +342,6 @@ function ManagerSpace() {
               {email} · {roleLabel}
             </span>
             <div className="flex flex-wrap gap-xs md:justify-end">
-            <button
-              onClick={() => signOut()}
-              className="flex items-center gap-xs px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container"
-            >
-              <Icon name="logout" /> DÉCONNEXION
-            </button>
-            {isAdmin && (<Link
-              to="/manage/news"
-              className="flex items-center gap-xs px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
-            >
-              <Icon name="database" /> GÉRER LES DONNÉES
-            </Link>)}
             <Button
               type="button"
               variant="outline"
@@ -363,6 +351,18 @@ function ManagerSpace() {
             >
               <Icon name="file_download" /> {exportReport.isPending ? "EXPORT EN COURS…" : "EXPORTER LE RAPPORT"}
             </Button>
+            {isAdmin && (<Link
+              to="/manage/news"
+              className="flex items-center gap-xs px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
+            >
+              <Icon name="database" /> GÉRER LES DONNÉES
+            </Link>)}
+            <button
+              onClick={() => signOut()}
+              className="flex items-center gap-xs px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container"
+            >
+              <Icon name="logout" /> DÉCONNEXION
+            </button>
             </div>
           </div>
         </div>
