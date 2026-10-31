@@ -444,10 +444,11 @@ function ManagerSpace() {
               </Link>
             </div>
           </div>
-          <div className="flex flex-wrap gap-xs items-center md:items-end md:justify-end">
+          <div className="flex flex-col gap-xs items-start md:items-end">
             <span className="font-label-sm text-label-sm text-on-surface-variant">
               {email} · {roleLabel}
             </span>
+            <div className="flex flex-wrap gap-xs md:justify-end">
             <button
               onClick={() => signOut()}
               className="flex items-center gap-xs px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container"
@@ -469,6 +470,7 @@ function ManagerSpace() {
             >
               <Icon name="file_download" /> {exportReport.isPending ? "EXPORT EN COURS…" : "EXPORTER LE RAPPORT"}
             </Button>
+            </div>
           </div>
         </div>
 
