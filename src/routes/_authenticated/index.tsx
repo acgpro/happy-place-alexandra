@@ -2,17 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { proposeDraft } from "@/lib/draft.functions";
 import { ErrorSummary, Field, FormActions, Modal, Select, TextArea, TextInput, useFieldProps } from "@/components/manage/crud-ui";
-import { rejectionSchema, responseSchema, submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
+import { submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import { QUESTION_MAX, askQuestion, fetchAskableTeams, questionErrorMessage, questionSchema } from "@/lib/questions";
 import { BrandHeader } from "@/components/brand-header";
 import { AttachmentLink } from "@/components/attachment-link";
 import { CharCounter, SubmissionPreview, formatExactDate, rejectionErrorMessage } from "@/components/expandable-card";
 import { SubmissionReader } from "@/components/submission-reader";
-import { TeamQuestions } from "@/components/team-questions";
+import { TeamQuestions, useTeamQuestions } from "@/components/team-questions";
+import { PendingSubmissions, usePendingSubmissions } from "@/components/pending-submissions";
 import { NewsReader } from "@/components/news-reader";
 import { DepartureNotices } from "@/components/departure-notices";
 import { NewsImage, NewsLinks, NewsMediaEditor } from "@/components/news-media";
@@ -24,17 +24,13 @@ import {
   fetchMetrics,
   deltaText,
   fetchNews,
-  fetchSubmissions,
   fetchMyFullName,
   exportMyRecentSubmissions,
-  REJECTION_CATEGORIES,
   type News,
-  type ResponseVisibility,
   type Submission,
   saveDraftNews,
   publishDraftNews,
   deleteDraftNews,
-  reviewSubmission,
   submitIdea,
   timeAgo,
   updateBlockerStatus,
@@ -78,29 +74,19 @@ function Icon({ name, className = "" }: { name: string; className?: string }) {
   );
 }
 
+/** Nombre d'éléments en attente sur un bouton ; masqué à 0, annoncé par le nom accessible du bouton. */
+function CountBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span aria-hidden="true" className="bg-tertiary-fixed text-on-tertiary-fixed px-xs font-label-sm text-label-sm">
+      {count}
+    </span>
+  );
+}
+
 /** Transmet à un champ natif les attributs de son Field (libellé et message d'erreur reliés). */
 function WithFieldProps({ children }: { children: (field: ReturnType<typeof useFieldProps>) => React.ReactNode }) {
   return <>{children(useFieldProps())}</>;
-}
-
-/** Liste des motifs de refus, reliée à son libellé et à son message d'erreur. */
-function RejectionCategorySelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const field = useFieldProps();
-  return (
-    <select
-      {...field}
-      className="w-full border border-outline-variant bg-card p-xs text-body-sm"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">— Choisir un motif —</option>
-      {REJECTION_CATEGORIES.map((c) => (
-        <option key={c} value={c}>
-          {c}
-        </option>
-      ))}
-    </select>
-  );
 }
 
 function trendText(m: Metric | undefined) {
@@ -149,73 +135,11 @@ function ManagerSpace() {
     },
   });
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [rejecting, setRejecting] = useState<Submission | null>(null);
   const [reading, setReading] = useState<Submission | null>(null);
   const [readingNews, setReadingNews] = useState<News | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [rejectForm, setRejectForm] = useState({ rejection_category: "", rejection_note: "" });
-  const [rejectErrors, setRejectErrors] = useState<FieldErrors>({});
-  const [validating, setValidating] = useState<Submission | null>(null);
-  const [responseForm, setResponseForm] = useState<{ body: string; visibility: ResponseVisibility }>({
-    body: "",
-    visibility: "auteur",
-  });
-  const [responseErrors, setResponseErrors] = useState<FieldErrors>({});
-  const [draftPending, setDraftPending] = useState(false);
-  const [draftMessage, setDraftMessage] = useState("");
-  const validatingId = useRef<string | null>(null);
-
-  async function requestDraft(s: Submission) {
-    setDraftPending(true);
-    setDraftMessage("");
-    let draft: string | null = null;
-    try {
-      const r = await proposeDraft({ data: { submissionId: s.id } });
-      draft = r.ok ? r.draft : null;
-    } catch {
-      draft = null;
-    }
-    setDraftPending(false);
-    if (validatingId.current !== s.id) return;
-    if (draft) {
-      setResponseForm((f) => (f.body.trim() ? f : { ...f, body: draft }));
-      setDraftMessage("Brouillon proposé par l'IA : relis-le et modifie-le avant d'envoyer.");
-    } else {
-      setDraftMessage("Le brouillon n'a pas pu être généré. Rédige ta réponse toi-même.");
-    }
-  }
 
   const news =useQuery({ queryKey: ["news"], queryFn: fetchNews, retry: false });
-  const submissions = useQuery({
-    queryKey: ["submissions"],
-    queryFn: fetchSubmissions,
-    retry: false,
-  });
-  // Admin : rôle des auteurs affichés, pour ne proposer que les idées de managers et d'admins.
-  const authorEmails = [
-    ...new Set((submissions.data ?? []).map((s) => (s.submitted_by_email ?? "").toLowerCase()).filter(Boolean)),
-  ].sort();
-  const authorRoles = useQuery({
-    queryKey: ["allowed_users", "roles", authorEmails],
-    enabled: isAdmin && authorEmails.length > 0,
-    retry: false,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("allowed_users")
-        .select("email, allowed_user_roles(role)")
-        .in("email", authorEmails);
-      if (error) throw error;
-      return new Map((data ?? []).map((u) => [u.email.toLowerCase(), u.allowed_user_roles?.role ?? "collaborateur"]));
-    },
-  });
-  /** Boutons VALIDER / REFUSER : personne ne traite sa propre idée ; l'admin traite celles des managers et des admins. */
-  function canActOn(s: Submission) {
-    const author = (s.submitted_by_email ?? "").toLowerCase();
-    if (!canReview || !author || author === myEmail) return false;
-    if (!isAdmin) return true;
-    const authorRole = authorRoles.data?.get(author);
-    return authorRole === "manager" || authorRole === "admin";
-  }
   const myNameQuery = useQuery({
     queryKey: ["allowed_users", "me", email],
     queryFn: () => fetchMyFullName(email ?? ""),
@@ -224,10 +148,6 @@ function ManagerSpace() {
   });
   // Nom lu dans la base : le champ « Nom » est alors en lecture seule.
   const myFullName = myNameQuery.data ?? null;
-  // File de validation : jamais ses propres idées.
-  const pendingForMe = (submissions.data ?? []).filter(
-    (s) => !myEmail || (s.submitted_by_email ?? "").toLowerCase() !== myEmail,
-  );
   const blockers = useQuery({ queryKey: ["blockers"], queryFn: fetchBlockers, retry: false });
   const metrics = useQuery({ queryKey: ["metrics"], queryFn: fetchMetrics, retry: false });
   const onError = (e: unknown) => toast.error((e as Error).message);
@@ -278,40 +198,6 @@ function ManagerSpace() {
     },
     onError,
   });
-
-  const review = useMutation({
-    mutationFn: reviewSubmission,
-    onSuccess: (_d, vars) => {
-      if (vars.status === "refusée") {
-        setRejecting(null);
-        toast.success("Idée refusée");
-      } else {
-        setValidating(null);
-        setReading((r) => (r?.id === vars.id ? null : r));
-        toast.success("Idée validée");
-        qc.invalidateQueries({ queryKey: ["responses"] });
-      }
-      qc.invalidateQueries({ queryKey: ["submissions"] });
-    },
-    onError: (e: unknown) => toast.error(rejectionErrorMessage(e)),
-  });
-
-  function startReject(s: Submission) {
-    setReading(null);
-    setRejecting(s);
-    setRejectErrors({});
-    setRejectForm({ rejection_category: "", rejection_note: "" });
-  }
-
-  function startValidate(s: Submission) {
-    setReading(null);
-    setValidating(s);
-    validatingId.current = s.id;
-    setDraftMessage("");
-    setDraftPending(false);
-    setResponseErrors({});
-    setResponseForm({ body: "", visibility: "auteur" });
-  }
 
   const submit = useMutation({
     mutationFn: (input: SubmissionInput) => submitIdea({
@@ -370,6 +256,9 @@ function ManagerSpace() {
   const drafts = visibleDrafts.length;
   const published = news.data?.filter((n) => n.status === "publiée") ?? [];
   const roleLabel = role === "admin" ? "ADMIN" : role === "manager" ? "MANAGER" : "COLLABORATEUR";
+  // Badges de l'accueil manager : mêmes requêtes (lecture seule) et mêmes filtres que les pages dédiées.
+  const pendingIdeas = usePendingSubmissions(myEmail, role === "manager" && !!myEmail).pending.length;
+  const pendingQuestions = useTeamQuestions(email ?? "", role === "manager" && !!email).pending.length;
 
   function sendSubmission(e: React.FormEvent) {
     e.preventDefault();
@@ -387,6 +276,43 @@ function ManagerSpace() {
     submit.mutate(result.data);
   }
 
+  const secondaryButton =
+    "flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all";
+  const submitIdeaButton = (
+    <button
+      onClick={() => {
+        setSubmissionErrors({});
+        const only = role === "manager" && myTeams.data?.length === 1 ? myTeams.data[0] : "";
+        setSubmissionForm({ author_name: "", team: only, content: "", status: "en attente" });
+      }}
+      className="flex items-center gap-xs px-md py-xs border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
+    >
+      <Icon name="add" /> SOUMETTRE UNE IDÉE
+    </button>
+  );
+  const myIdeasLink = (
+    <Link to="/idees" className={secondaryButton}>
+      <Icon name="lightbulb" /> MES IDÉES
+    </Link>
+  );
+  const askQuestionButton = (
+    <button
+      type="button"
+      onClick={() => {
+        setQuestionErrors({});
+        setQuestionForm({ team: "", body: "" });
+      }}
+      className={secondaryButton}
+    >
+      <Icon name="help" /> POSER UNE QUESTION
+    </button>
+  );
+  const myQuestionsLink = (
+    <Link to="/questions" className={secondaryButton}>
+      <Icon name="chat" /> MES QUESTIONS
+    </Link>
+  );
+
   return (
     <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
       <BrandHeader />
@@ -398,44 +324,47 @@ function ManagerSpace() {
               Vue d'ensemble
             </p>
             <h1 className="font-headline-lg text-headline-lg text-primary">Happy Place</h1>
-            <div className="flex flex-col gap-xs items-start">
-              <div className="flex flex-wrap gap-xs">
-                <button
-                  onClick={() => {
-                    setSubmissionErrors({});
-                    const only = role === "manager" && myTeams.data?.length === 1 ? myTeams.data[0] : "";
-                    setSubmissionForm({ author_name: "", team: only, content: "", status: "en attente" });
-                  }}
-                  className="flex items-center gap-xs px-md py-xs border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
-                >
-                  <Icon name="add" /> SOUMETTRE UNE IDÉE
-                </button>
-                <Link
-                  to="/idees"
-                  className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
-                >
-                  <Icon name="lightbulb" /> MES IDÉES
-                </Link>
+            {role === "admin" ? (
+              <div className="flex flex-col gap-xs items-start">
+                <div className="flex flex-wrap gap-xs">
+                  {submitIdeaButton}
+                  {myIdeasLink}
+                </div>
+                <div className="flex flex-wrap gap-xs">
+                  {askQuestionButton}
+                  {myQuestionsLink}
+                </div>
               </div>
+            ) : (
               <div className="flex flex-wrap gap-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuestionErrors({});
-                    setQuestionForm({ team: "", body: "" });
-                  }}
-                  className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
-                >
-                  <Icon name="help" /> POSER UNE QUESTION
-                </button>
-                <Link
-                  to="/questions"
-                  className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
-                >
-                  <Icon name="chat" /> MES QUESTIONS
-                </Link>
+                {submitIdeaButton}
+                {myIdeasLink}
+                {askQuestionButton}
+                {myQuestionsLink}
+                {role === "manager" && (
+                  <>
+                    <Link
+                      to="/idees-collaborateur"
+                      aria-label={pendingIdeas > 0 ? `Idées collaborateur, ${pendingIdeas} en attente` : undefined}
+                      className={secondaryButton}
+                    >
+                      <Icon name="inbox" /> IDÉES COLLABORATEUR
+                      <CountBadge count={pendingIdeas} />
+                    </Link>
+                    <Link
+                      to="/questions-collaborateur"
+                      aria-label={
+                        pendingQuestions > 0 ? `Questions collaborateur, ${pendingQuestions} en attente` : undefined
+                      }
+                      className={secondaryButton}
+                    >
+                      <Icon name="forum" /> QUESTIONS COLLABORATEUR
+                      <CountBadge count={pendingQuestions} />
+                    </Link>
+                  </>
+                )}
               </div>
-            </div>
+            )}
           </div>
           <div className="flex flex-col gap-xs items-start md:items-end">
             <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -469,7 +398,7 @@ function ManagerSpace() {
 
         <div className="bento-grid">
           {/* News Management & Input */}
-          <section className={`col-span-12 ${canReview ? "lg:col-span-8" : "lg:col-span-12"} bg-surface-container-lowest border border-outline-variant p-md flex flex-col gap-md`}>
+          <section className={`col-span-12 ${isAdmin ? "lg:col-span-8" : "lg:col-span-12"} bg-surface-container-lowest border border-outline-variant p-md flex flex-col gap-md`}>
             <div className="flex items-center justify-between border-b border-outline-variant pb-sm">
               <h2 className="font-headline-sm text-headline-sm text-primary">
                 Actualités du cabinet
@@ -671,69 +600,14 @@ function ManagerSpace() {
             </div>
           </section>
 
-          {/* Pending Submissions */}
-          {canReview && <section className="col-span-12 lg:col-span-4 min-w-0 bg-surface-container-lowest border border-outline-variant p-md flex flex-col">
-            <div className="flex items-center justify-between border-b border-outline-variant pb-sm mb-md">
-              <h2 className="font-headline-sm text-headline-sm text-primary">
-                Idées en attente
-              </h2>
-              <div className="bg-tertiary-fixed text-on-tertiary-fixed px-xs py-1 rounded-full font-label-sm text-label-sm">
-                {pendingForMe.length} NOUVELLES
-              </div>
-            </div>
-            <div className="space-y-sm flex-grow min-w-0">
-              {submissions.isError && (
-                <p className="text-body-sm text-error">
-                  Les idées sont indisponibles.
-                </p>
-              )}
-              {submissions.data && pendingForMe.length === 0 && (
-                <p className="text-body-sm text-on-surface-variant italic">
-                  Aucune idée en attente.
-                </p>
-              )}
-              {pendingForMe.map((s) => (
-                <div
-                  key={s.id}
-                  className="p-sm border border-outline-variant bg-card space-y-sm min-w-0 overflow-hidden"
-                >
-                  <div className="flex items-center gap-sm">
-                    <div className="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center">
-                      <Icon name="person" className="text-sm" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-body-sm text-primary font-bold wrap-anywhere">{s.author_name}</p>
-                      <p className="text-[10px] text-on-surface-variant font-label-sm wrap-anywhere">{s.team}</p>
-                    </div>
-                    <span className="text-[10px] text-on-surface-variant font-label-sm whitespace-nowrap">
-                      {timeAgo(s.created_at)}
-                    </span>
-                  </div>
-                  <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
-                  <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
-                  {canActOn(s) && <div className="flex gap-xs pt-xs">
-                    <button
-                      onClick={() => startReject(s)}
-                      className="flex-1 py-1 border border-outline text-primary font-label-sm text-label-sm hover:bg-surface-container transition-colors"
-                    >
-                      REFUSER
-                    </button>
-                    <button
-                      onClick={() => startValidate(s)}
-                      className="flex-1 py-1 bg-primary text-on-primary font-label-sm text-label-sm hover:opacity-90 transition-colors"
-                    >
-                      VALIDER
-                    </button>
-                  </div>}
-                </div>
-              ))}
-            </div>
-          </section>}
+          {/* Idées en attente : accueil admin ; le manager les traite sur /idees-collaborateur */}
+          {isAdmin && email && (
+            <PendingSubmissions role="admin" email={email} className="col-span-12 lg:col-span-4" />
+          )}
 
           {/* F5 : questions des collaborateurs (manager : répondre ; admin : lecture seule) */}
-          {(role === "manager" || isAdmin) && email && (
-            <TeamQuestions role={isAdmin ? "admin" : "manager"} email={email} />
-          )}
+          {/* Questions : accueil admin (lecture seule) ; le manager répond sur /questions-collaborateur */}
+          {isAdmin && email && <TeamQuestions role="admin" email={email} />}
 
           <ValidatedSubmissions
             role={role}
@@ -873,142 +747,7 @@ function ManagerSpace() {
       <SubmissionReader
         submission={reading}
         onClose={() => setReading(null)}
-        onReject={reading && canActOn(reading) && reading.status === "en attente" ? () => startReject(reading) : undefined}
-        onApprove={
-          reading && canActOn(reading) && reading.status === "en attente"
-            ? () => startValidate(reading)
-            : undefined
-        }
-        approving={review.isPending}
       />
-      {rejecting && (
-        <Modal title="Refuser l'idée du collaborateur" onClose={() => setRejecting(null)}>
-          <form
-            noValidate
-            className="space-y-sm"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const res = validate(rejectionSchema, rejectForm);
-              if (!res.ok) return setRejectErrors(res.errors);
-              setRejectErrors({});
-              review.mutate({ id: rejecting.id, status: "refusée", ...res.data });
-            }}
-          >
-            <p className="max-h-48 overflow-y-auto border border-outline-variant bg-surface-container-low p-xs text-body-sm italic text-on-surface-variant whitespace-pre-line wrap-anywhere">“{rejecting.content}”</p>
-            <ErrorSummary errors={rejectErrors} />
-            <Field label="Motif du refus" error={rejectErrors.rejection_category}>
-              <RejectionCategorySelect
-                value={rejectForm.rejection_category}
-                onChange={(v) => setRejectForm({ ...rejectForm, rejection_category: v })}
-              />
-            </Field>
-            <Field label="Raison du refus (obligatoire)" error={rejectErrors.rejection_note}>
-              <TextArea
-                rows={4}
-                value={rejectForm.rejection_note}
-                placeholder="Explique au collaborateur pourquoi son idée est refusée…"
-                onChange={(e) => setRejectForm({ ...rejectForm, rejection_note: e.target.value })}
-              />
-              <CharCounter value={rejectForm.rejection_note} max={500} />
-            </Field>
-            <FormActions pending={review.isPending} onCancel={() => setRejecting(null)} />
-          </form>
-        </Modal>
-      )}
-      {validating && (
-        <Modal
-          title="Valider l'idée de mon collaborateur"
-          onClose={() => {
-            validatingId.current = null;
-            setValidating(null);
-          }}
-        >
-          <form
-            noValidate
-            className="space-y-sm"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const res = validate(responseSchema, responseForm);
-              if (!res.ok) return setResponseErrors(res.errors);
-              setResponseErrors({});
-              review.mutate({ id: validating.id, status: "validée", response: res.data });
-            }}
-          >
-            <p className="max-h-48 overflow-y-auto border border-outline-variant bg-surface-container-low p-xs text-body-sm italic text-on-surface-variant whitespace-pre-line wrap-anywhere">
-              “{validating.content}”
-            </p>
-            <p className="text-[11px] font-label-sm text-on-surface-variant uppercase wrap-anywhere">
-              <span className="text-primary font-bold">{validating.author_name}</span> •{" "}
-              {validating.team} • Soumise le {formatExactDate(validating.created_at)}
-            </p>
-            <ErrorSummary errors={responseErrors} />
-            <div className="flex flex-wrap items-center gap-xs">
-              <button
-                type="button"
-                onClick={() => requestDraft(validating)}
-                disabled={draftPending || !!responseForm.body.trim()}
-                className="px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container disabled:opacity-50"
-              >
-                {draftPending ? "GÉNÉRATION…" : "PROPOSER UN BROUILLON"}
-              </button>
-              <span className="border border-outline px-xs font-label-sm text-label-sm text-on-surface-variant uppercase">
-                IA, à relire
-              </span>
-            </div>
-            <p role="status" className="font-body-sm text-body-sm text-on-surface-variant">
-              {draftMessage}
-            </p>
-            <Field label="Réponse à l'auteur" error={responseErrors.body}>
-              <TextArea
-                rows={4}
-                value={responseForm.body}
-                placeholder="Explique au collaborateur la suite donnée à son idée…"
-                onChange={(e) => setResponseForm({ ...responseForm, body: e.target.value })}
-              />
-              <CharCounter value={responseForm.body} max={500} />
-            </Field>
-            <fieldset className="space-y-xs">
-              <legend className="font-label-sm text-label-sm text-on-surface-variant uppercase block">
-                Visibilité de la réponse
-              </legend>
-              {(
-                [
-                  { value: "auteur", label: "Visible par l'auteur seulement" },
-                  { value: "entreprise", label: "Visible par toute l'entreprise" },
-                ] as const
-              ).map((o) => (
-                <label
-                  key={o.value}
-                  className={`flex cursor-pointer gap-sm border p-sm ${
-                    responseForm.visibility === o.value
-                      ? "border-primary bg-surface-container"
-                      : "border-outline-variant"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="response-visibility"
-                    value={o.value}
-                    checked={responseForm.visibility === o.value}
-                    onChange={() => setResponseForm({ ...responseForm, visibility: o.value })}
-                    className="mt-1 accent-[var(--color-primary)]"
-                  />
-                  <span className="font-body-sm text-body-sm text-on-surface">{o.label}</span>
-                </label>
-              ))}
-            </fieldset>
-            <FormActions
-              pending={review.isPending}
-              disabled={!responseForm.body.trim()}
-              submitLabel="VALIDER ET ENVOYER"
-              onCancel={() => {
-                validatingId.current = null;
-                setValidating(null);
-              }}
-            />
-          </form>
-        </Modal>
-      )}
       {submissionForm && (
         <Modal title="Soumettre une idée" onClose={() => setSubmissionForm(null)}>
           <form onSubmit={sendSubmission} className="space-y-sm" noValidate>

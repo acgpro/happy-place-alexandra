@@ -33,6 +33,22 @@ function ageLabel(iso: string) {
   return `EN ATTENTE DEPUIS ${days} JOUR${days > 1 ? "S" : ""}`;
 }
 
+/** Questions des directions (même requête et même filtre que le bloc), partagées avec le badge de l'accueil. */
+export function useTeamQuestions(email: string, enabled = true) {
+  const list = useQuery({
+    queryKey: ["questions", "team", email],
+    queryFn: () => fetchTeamQuestions(email),
+    enabled,
+    retry: false,
+  });
+  // CA-F5-7 : une question répondue quitte la liste des autres managers ; celui qui a répondu la garde.
+  const all = (list.data ?? []).filter(
+    (q) => q.status === "en attente" || q.answered_by_email?.toLowerCase() === email.toLowerCase(),
+  );
+  const pending = all.filter((q) => q.status === "en attente");
+  return { list, all, pending };
+}
+
 /**
  * F5 — accueil manager (« Questions collaborateur », écran 8) et accueil admin
  * (« Questions en attente », écran 10, lecture seule, sans bouton de réponse).
@@ -44,11 +60,7 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
   const [body, setBody] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
 
-  const list = useQuery({
-    queryKey: ["questions", "team", email],
-    queryFn: () => fetchTeamQuestions(email),
-    retry: false,
-  });
+  const { list, all, pending } = useTeamQuestions(email);
 
   const managers = useQuery({
     queryKey: ["questions", "managers-by-team"],
@@ -86,11 +98,6 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
     answer.mutate({ id: answering.id, text: r.data.body });
   }
 
-  // CA-F5-7 : une question répondue quitte la liste des autres managers ; celui qui a répondu la garde.
-  const all = (list.data ?? []).filter(
-    (q) => q.status === "en attente" || q.answered_by_email?.toLowerCase() === email.toLowerCase(),
-  );
-  const pending = all.filter((q) => q.status === "en attente");
   const shown = isAdmin ? pending : all;
   const title = isAdmin ? "Questions en attente" : "Questions collaborateur";
   const counter = isAdmin ? `${pending.length} SANS RÉPONSE` : `${pending.length} EN ATTENTE`;
