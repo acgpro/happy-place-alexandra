@@ -245,16 +245,18 @@ export function PendingSubmissions({
             <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
             <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
             {canActOn(s) && (
-              <div className="flex gap-xs pt-xs">
+              <div className="flex flex-wrap justify-end gap-sm pt-xs">
                 <button
+                  type="button"
                   onClick={() => startReject(s)}
-                  className="flex-1 py-1 border border-outline text-primary font-label-sm text-label-sm hover:bg-surface-container transition-colors"
+                  className="min-h-[44px] px-md border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-colors"
                 >
                   REFUSER
                 </button>
                 <button
+                  type="button"
                   onClick={() => startValidate(s)}
-                  className="flex-1 py-1 bg-primary text-on-primary font-label-sm text-label-sm hover:opacity-90 transition-colors"
+                  className="min-h-[44px] px-md border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-colors"
                 >
                   VALIDER
                 </button>
