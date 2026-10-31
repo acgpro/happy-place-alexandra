@@ -68,12 +68,12 @@ export function SubmissionReader({
               {response && <ResponseBlock response={response} />}
             </div>
             {(onReject || onApprove) && (
-              <div className="flex gap-xs border-t border-outline-variant p-md">
+              <div className="flex flex-wrap justify-end gap-sm border-t border-outline-variant p-md">
                 {onReject && (
                   <button
                     type="button"
                     onClick={onReject}
-                    className="flex-1 py-sm border border-outline text-primary font-label-sm text-label-sm hover:bg-surface-container transition-colors"
+                    className="min-h-[44px] px-md border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-colors"
                   >
                     REFUSER
                   </button>
@@ -83,7 +83,7 @@ export function SubmissionReader({
                     type="button"
                     disabled={approving}
                     onClick={onApprove}
-                    className="flex-1 py-sm bg-primary text-on-primary font-label-sm text-label-sm hover:opacity-90 transition-colors disabled:opacity-60"
+                    className="min-h-[44px] px-md border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-colors disabled:opacity-60"
                   >
                     VALIDER
                   </button>

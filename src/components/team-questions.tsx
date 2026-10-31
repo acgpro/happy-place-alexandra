@@ -164,7 +164,7 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
                     type="button"
                     aria-haspopup="dialog"
                     onClick={() => open(q)}
-                    className="px-md py-xs border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
+                    className="min-h-[44px] px-md py-xs border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
                   >
                     RÉPONDRE
                   </button>
