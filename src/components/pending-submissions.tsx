@@ -228,31 +228,32 @@ export function PendingSubmissions({
             key={s.id}
             className="p-sm border border-outline-variant bg-card space-y-sm min-w-0 overflow-hidden"
           >
-            <div className="flex items-center gap-sm">
-              <div className="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center">
-                <Icon name="person" className="text-sm" />
+            <div className="flex items-start justify-between gap-xs">
+              <div className="flex items-center gap-sm min-w-0 flex-1">
+                <div className="w-8 h-8 shrink-0 rounded-full bg-secondary-fixed flex items-center justify-center">
+                  <Icon name="person" className="text-sm" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-body-sm text-primary font-bold wrap-anywhere">{s.author_name}</p>
+                  <p className="text-[10px] text-on-surface-variant font-label-sm wrap-anywhere">
+                    {s.team} · {timeAgo(s.created_at)}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-body-sm text-primary font-bold wrap-anywhere">{s.author_name}</p>
-                <p className="text-[10px] text-on-surface-variant font-label-sm wrap-anywhere">
-                  {s.team}
-                </p>
-              </div>
-              <span className="text-[10px] text-on-surface-variant font-label-sm whitespace-nowrap">
-                {timeAgo(s.created_at)}
-              </span>
+              {canActOn(s) && (
+                <button
+                  type="button"
+                  onClick={() => startReject(s)}
+                  className="shrink-0 min-h-[44px] px-md border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-colors"
+                >
+                  REFUSER
+                </button>
+              )}
             </div>
             <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
             <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
             {canActOn(s) && (
-              <div className="flex flex-wrap justify-end gap-sm pt-xs">
-                <button
-                  type="button"
-                  onClick={() => startReject(s)}
-                  className="min-h-[44px] px-md border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-colors"
-                >
-                  REFUSER
-                </button>
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={() => startValidate(s)}

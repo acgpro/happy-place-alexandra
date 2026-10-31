@@ -47,12 +47,24 @@ export function SubmissionReader({
                   {s.team} • {(statusLabel ?? s.status).toUpperCase()} • Soumise le {formatExactDate(s.created_at)}
                 </DialogPrimitive.Description>
               </div>
-              <DialogPrimitive.Close
-                aria-label="Fermer"
-                className="text-on-surface-variant hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined">close</span>
-              </DialogPrimitive.Close>
+              {/* Fermer reste le premier élément focalisable (focus initial de la fenêtre) ; Refuser dessous. */}
+              <div className="flex shrink-0 flex-col items-end gap-xs">
+                <DialogPrimitive.Close
+                  aria-label="Fermer"
+                  className="text-on-surface-variant hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">close</span>
+                </DialogPrimitive.Close>
+                {onReject && (
+                  <button
+                    type="button"
+                    onClick={onReject}
+                    className="min-h-[44px] px-md border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-colors"
+                  >
+                    REFUSER
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-md space-y-md">
               <p className="font-body-md text-body-md text-on-surface whitespace-pre-line wrap-anywhere">
@@ -67,27 +79,16 @@ export function SubmissionReader({
               )}
               {response && <ResponseBlock response={response} />}
             </div>
-            {(onReject || onApprove) && (
-              <div className="flex flex-wrap justify-end gap-sm border-t border-outline-variant p-md">
-                {onReject && (
-                  <button
-                    type="button"
-                    onClick={onReject}
-                    className="min-h-[44px] px-md border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-colors"
-                  >
-                    REFUSER
-                  </button>
-                )}
-                {onApprove && (
-                  <button
-                    type="button"
-                    disabled={approving}
-                    onClick={onApprove}
-                    className="min-h-[44px] px-md border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-colors disabled:opacity-60"
-                  >
-                    VALIDER
-                  </button>
-                )}
+            {onApprove && (
+              <div className="flex justify-end border-t border-outline-variant p-md">
+                <button
+                  type="button"
+                  disabled={approving}
+                  onClick={onApprove}
+                  className="min-h-[44px] px-md border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-colors disabled:opacity-60"
+                >
+                  VALIDER
+                </button>
               </div>
             )}
           </DialogPrimitive.Content>
