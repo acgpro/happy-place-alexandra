@@ -306,6 +306,59 @@ export type Database = {
         }
         Relationships: []
       }
+      questions: {
+        Row: {
+          answer_body: string | null
+          answered_at: string | null
+          answered_by_email: string | null
+          answered_by_name: string | null
+          answered_by_role: Database["public"]["Enums"]["app_role"] | null
+          asked_at: string
+          asked_by_email: string
+          asked_by_name: string
+          body: string
+          id: string
+          status: Database["public"]["Enums"]["question_status"]
+          team: string
+        }
+        Insert: {
+          answer_body?: string | null
+          answered_at?: string | null
+          answered_by_email?: string | null
+          answered_by_name?: string | null
+          answered_by_role?: Database["public"]["Enums"]["app_role"] | null
+          asked_at?: string
+          asked_by_email: string
+          asked_by_name: string
+          body: string
+          id?: string
+          status?: Database["public"]["Enums"]["question_status"]
+          team: string
+        }
+        Update: {
+          answer_body?: string | null
+          answered_at?: string | null
+          answered_by_email?: string | null
+          answered_by_name?: string | null
+          answered_by_role?: Database["public"]["Enums"]["app_role"] | null
+          asked_at?: string
+          asked_by_email?: string
+          asked_by_name?: string
+          body?: string
+          id?: string
+          status?: Database["public"]["Enums"]["question_status"]
+          team?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_team_fkey"
+            columns: ["team"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["name"]
+          },
+        ]
+      }
       submission_responses: {
         Row: {
           body: string
@@ -492,6 +545,14 @@ export type Database = {
       }
     }
     Functions: {
+      answer_question: {
+        Args: { _body: string; _question_id: string }
+        Returns: Database["public"]["Tables"]["questions"]["Row"]
+      }
+      askable_teams: {
+        Args: never
+        Returns: string[]
+      }
       choisir_mon_role: {
         Args: {
           _first_name: string
@@ -516,6 +577,7 @@ export type Database = {
       blocker_status: "OUVERT" | "EN COURS" | "SURVEILLANCE" | "RÉSOLU"
       metric_period: "hebdomadaire" | "mensuel" | "trimestriel" | "annuel"
       news_status: "brouillon" | "publiée"
+      question_status: "en attente" | "répondue"
       rejection_category:
         | "à clarifier"
         | "en désaccord avec les process"
@@ -655,6 +717,7 @@ export const Constants = {
       blocker_status: ["OUVERT", "EN COURS", "SURVEILLANCE", "RÉSOLU"],
       metric_period: ["hebdomadaire", "mensuel", "trimestriel", "annuel"],
       news_status: ["brouillon", "publiée"],
+      question_status: ["en attente", "répondue"],
       rejection_category: [
         "à clarifier",
         "en désaccord avec les process",

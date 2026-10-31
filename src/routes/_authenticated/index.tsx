@@ -5,8 +5,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { proposeDraft } from "@/lib/draft.functions";
-import { ErrorSummary, Field, FormActions, Modal, TextArea, TextInput, useFieldProps } from "@/components/manage/crud-ui";
+import { ErrorSummary, Field, FormActions, Modal, Select, TextArea, TextInput, useFieldProps } from "@/components/manage/crud-ui";
 import { rejectionSchema, responseSchema, submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
+import { QUESTION_MAX, askQuestion, fetchAskableTeams, questionErrorMessage, questionSchema } from "@/lib/questions";
 import { BrandHeader } from "@/components/brand-header";
 import { AttachmentLink } from "@/components/attachment-link";
 import { CharCounter, SubmissionPreview, formatExactDate, rejectionErrorMessage } from "@/components/expandable-card";
@@ -136,6 +137,8 @@ function ManagerSpace() {
   const newsLinkErrs = showLinkErrs ? linkErrors(media.links) : {};
   const [submissionForm, setSubmissionForm] = useState<SubmissionInput | null>(null);
   const [submissionErrors, setSubmissionErrors] = useState<FieldErrors>({});
+  const [questionForm, setQuestionForm] = useState<{ team: string; body: string } | null>(null);
+  const [questionErrors, setQuestionErrors] = useState<FieldErrors>({});
   const myTeams = useQuery({
     queryKey: ["manager_teams", "mine", email],
     enabled: role === "manager" && !!email,
@@ -179,9 +182,9 @@ function ManagerSpace() {
     if (validatingId.current !== s.id) return;
     if (draft) {
       setResponseForm((f) => (f.body.trim() ? f : { ...f, body: draft }));
-      setDraftMessage("Brouillon proposé par l'IA : relisez-le et modifiez-le avant d'envoyer.");
+      setDraftMessage("Brouillon proposé par l'IA : relis-le et modifie-le avant d'envoyer.");
     } else {
-      setDraftMessage("Le brouillon n'a pas pu être généré. Rédigez votre réponse vous-même.");
+      setDraftMessage("Le brouillon n'a pas pu être généré. Rédige ta réponse toi-même.");
     }
   }
 
@@ -247,7 +250,7 @@ function ManagerSpace() {
 
   const exportReport = useMutation({
     mutationFn: () => {
-      if (!email) throw new Error("Votre adresse e-mail est indisponible.");
+      if (!email) throw new Error("Ton adresse e-mail est indisponible.");
       return exportMyRecentSubmissions(email);
     },
     onSuccess: (count) => {
@@ -342,6 +345,37 @@ function ManagerSpace() {
     onError: (e: unknown) => toast.error(rejectionErrorMessage(e)),
   });
 
+  // F5 : directions ouvertes à la question, chargées à l'ouverture de la fenêtre.
+  const askableTeams = useQuery({
+    queryKey: ["questions", "askable-teams", email],
+    queryFn: fetchAskableTeams,
+    enabled: !!questionForm,
+    retry: false,
+  });
+
+  const ask = useMutation({
+    mutationFn: askQuestion,
+    onSuccess: () => {
+      setQuestionForm(null);
+      setQuestionErrors({});
+      toast.success("Question envoyée. Tu la retrouveras dans « Mes questions ».");
+      qc.invalidateQueries({ queryKey: ["questions"] });
+    },
+    onError: (e: unknown) => toast.error(questionErrorMessage(e)),
+  });
+
+  function sendQuestion(e: React.FormEvent) {
+    e.preventDefault();
+    if (!questionForm) return;
+    const result = validate(questionSchema, questionForm);
+    if (!result.ok) {
+      setQuestionErrors(result.errors);
+      return;
+    }
+    setQuestionErrors({});
+    ask.mutate(result.data);
+  }
+
   const setBlocker = useMutation({
     mutationFn: updateBlockerStatus,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["blockers"] }),
@@ -380,16 +414,28 @@ function ManagerSpace() {
               Vue d'ensemble
             </p>
             <h1 className="font-headline-lg text-headline-lg text-primary">Happy Place</h1>
-            <button
-              onClick={() => {
-                setSubmissionErrors({});
-                const only = role === "manager" && myTeams.data?.length === 1 ? myTeams.data[0] : "";
-                setSubmissionForm({ author_name: "", team: only, content: "", status: "en attente" });
-              }}
-              className="flex items-center gap-xs px-md py-xs bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all shadow-sm"
-            >
-              <Icon name="add" /> SOUMETTRE UNE IDÉE
-            </button>
+            <div className="flex flex-wrap gap-xs">
+              <button
+                onClick={() => {
+                  setSubmissionErrors({});
+                  const only = role === "manager" && myTeams.data?.length === 1 ? myTeams.data[0] : "";
+                  setSubmissionForm({ author_name: "", team: only, content: "", status: "en attente" });
+                }}
+                className="flex items-center gap-xs px-md py-xs bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all shadow-sm"
+              >
+                <Icon name="add" /> SOUMETTRE UNE IDÉE
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuestionErrors({});
+                  setQuestionForm({ team: "", body: "" });
+                }}
+                className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
+              >
+                <Icon name="help" /> POSER UNE QUESTION
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap gap-xs items-center md:items-end md:justify-end">
             <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -1070,6 +1116,59 @@ function ManagerSpace() {
               pending={submit.isPending}
               submitLabel="ENVOYER"
               onCancel={() => setSubmissionForm(null)}
+            />
+          </form>
+        </Modal>
+      )}
+      {questionForm && (
+        <Modal title="Poser une question" onClose={() => setQuestionForm(null)}>
+          <form onSubmit={sendQuestion} className="space-y-sm" noValidate>
+            <ErrorSummary errors={questionErrors} />
+            <Field label="Direction concernée" error={questionErrors.team}>
+              <Select
+                value={questionForm.team}
+                disabled={askableTeams.data?.length === 0}
+                onChange={(e) => setQuestionForm({ ...questionForm, team: e.target.value })}
+              >
+                <option value="">Choisis une direction</option>
+                {askableTeams.data?.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {askableTeams.isError && (
+              <p role="alert" className="text-body-sm text-error">
+                La liste des directions n'a pas pu être chargée. Ferme la fenêtre et réessaie.
+              </p>
+            )}
+            {askableTeams.data && askableTeams.data.length === 0 && (
+              <p className="text-body-sm text-on-surface-variant">
+                Aucune direction ne peut recevoir ta question pour le moment.
+              </p>
+            )}
+            <Field label="Ta question" error={questionErrors.body}>
+              <TextArea
+                rows={5}
+                value={questionForm.body}
+                placeholder="Pose ta question, nous te répondrons dans les meilleurs délais…"
+                onChange={(e) => setQuestionForm({ ...questionForm, body: e.target.value })}
+              />
+              <CharCounter value={questionForm.body} max={QUESTION_MAX} />
+            </Field>
+            <p className="text-body-sm text-on-surface-variant">
+              Tu retrouveras la réponse dans « Mes questions ». Aucune notification n'est envoyée.
+            </p>
+            <FormActions
+              pending={ask.isPending}
+              submitLabel="ENVOYER LA QUESTION"
+              disabled={
+                !questionForm.team ||
+                questionForm.body.trim().length === 0 ||
+                questionForm.body.trim().length > QUESTION_MAX
+              }
+              onCancel={() => setQuestionForm(null)}
             />
           </form>
         </Modal>
