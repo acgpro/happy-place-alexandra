@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { proposeDraft } from "@/lib/draft.functions";
 import { ErrorSummary, Field, FormActions, Modal, TextArea, TextInput, useFieldProps } from "@/components/manage/crud-ui";
 import { rejectionSchema, responseSchema, submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import { BrandHeader } from "@/components/brand-header";
@@ -160,8 +161,31 @@ function ManagerSpace() {
     visibility: "auteur",
   });
   const [responseErrors, setResponseErrors] = useState<FieldErrors>({});
+  const [draftPending, setDraftPending] = useState(false);
+  const [draftMessage, setDraftMessage] = useState("");
+  const validatingId = useRef<string | null>(null);
 
-  const news = useQuery({ queryKey: ["news"], queryFn: fetchNews, retry: false });
+  async function requestDraft(s: Submission) {
+    setDraftPending(true);
+    setDraftMessage("");
+    let draft: string | null = null;
+    try {
+      const r = await proposeDraft({ data: { submissionId: s.id } });
+      draft = r.ok ? r.draft : null;
+    } catch {
+      draft = null;
+    }
+    setDraftPending(false);
+    if (validatingId.current !== s.id) return;
+    if (draft) {
+      setResponseForm((f) => (f.body.trim() ? f : { ...f, body: draft }));
+      setDraftMessage("Brouillon proposé par l'IA : relisez-le et modifiez-le avant d'envoyer.");
+    } else {
+      setDraftMessage("Le brouillon n'a pas pu être généré. Rédigez votre réponse vous-même.");
+    }
+  }
+
+  const news =useQuery({ queryKey: ["news"], queryFn: fetchNews, retry: false });
   const submissions = useQuery({
     queryKey: ["submissions"],
     queryFn: fetchSubmissions,
@@ -295,6 +319,9 @@ function ManagerSpace() {
   function startValidate(s: Submission) {
     setReading(null);
     setValidating(s);
+    validatingId.current = s.id;
+    setDraftMessage("");
+    setDraftPending(false);
     setResponseErrors({});
     setResponseForm({ body: "", visibility: "auteur" });
   }
@@ -875,7 +902,13 @@ function ManagerSpace() {
         </Modal>
       )}
       {validating && (
-        <Modal title="Valider l'idée de mon collaborateur" onClose={() => setValidating(null)}>
+        <Modal
+          title="Valider l'idée de mon collaborateur"
+          onClose={() => {
+            validatingId.current = null;
+            setValidating(null);
+          }}
+        >
           <form
             noValidate
             className="space-y-sm"
@@ -895,6 +928,22 @@ function ManagerSpace() {
               {validating.team} • Soumise le {formatExactDate(validating.created_at)}
             </p>
             <ErrorSummary errors={responseErrors} />
+            <div className="flex flex-wrap items-center gap-xs">
+              <button
+                type="button"
+                onClick={() => requestDraft(validating)}
+                disabled={draftPending || !!responseForm.body.trim()}
+                className="px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container disabled:opacity-50"
+              >
+                {draftPending ? "GÉNÉRATION…" : "PROPOSER UN BROUILLON"}
+              </button>
+              <span className="border border-outline px-xs font-label-sm text-label-sm text-on-surface-variant uppercase">
+                IA, à relire
+              </span>
+            </div>
+            <p role="status" className="font-body-sm text-body-sm text-on-surface-variant">
+              {draftMessage}
+            </p>
             <Field label="Réponse à l'auteur" error={responseErrors.body}>
               <TextArea
                 rows={4}
@@ -938,7 +987,10 @@ function ManagerSpace() {
               pending={review.isPending}
               disabled={!responseForm.body.trim()}
               submitLabel="VALIDER ET ENVOYER"
-              onCancel={() => setValidating(null)}
+              onCancel={() => {
+                validatingId.current = null;
+                setValidating(null);
+              }}
             />
           </form>
         </Modal>
