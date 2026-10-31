@@ -318,13 +318,13 @@ function ManagerSpace() {
       <BrandHeader />
       <main className="flex-grow w-full max-w-interface mx-auto p-sm md:p-md space-y-md">
         {email && <DepartureNotices email={email} />}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-sm mb-lg">
+        <div className={`flex flex-col md:flex-row md:items-end justify-between gap-sm ${role === "admin" ? "mb-lg" : ""}`}>
           <div className="space-y-sm">
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
               Vue d'ensemble
             </p>
             <h1 className="font-headline-lg text-headline-lg text-primary">Happy Place</h1>
-            {role === "admin" ? (
+            {role === "admin" && (
               <div className="flex flex-col gap-xs items-start">
                 <div className="flex flex-wrap gap-xs">
                   {submitIdeaButton}
@@ -334,35 +334,6 @@ function ManagerSpace() {
                   {askQuestionButton}
                   {myQuestionsLink}
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-xs">
-                {submitIdeaButton}
-                {myIdeasLink}
-                {askQuestionButton}
-                {myQuestionsLink}
-                {role === "manager" && (
-                  <>
-                    <Link
-                      to="/idees-collaborateur"
-                      aria-label={pendingIdeas > 0 ? `Idées collaborateur, ${pendingIdeas} en attente` : undefined}
-                      className={secondaryButton}
-                    >
-                      <Icon name="inbox" /> IDÉES COLLABORATEUR
-                      <CountBadge count={pendingIdeas} />
-                    </Link>
-                    <Link
-                      to="/questions-collaborateur"
-                      aria-label={
-                        pendingQuestions > 0 ? `Questions collaborateur, ${pendingQuestions} en attente` : undefined
-                      }
-                      className={secondaryButton}
-                    >
-                      <Icon name="forum" /> QUESTIONS COLLABORATEUR
-                      <CountBadge count={pendingQuestions} />
-                    </Link>
-                  </>
-                )}
               </div>
             )}
           </div>
@@ -395,6 +366,44 @@ function ManagerSpace() {
             </div>
           </div>
         </div>
+
+        {/* Collaborateur et manager : une rangée pleine largeur, idées à gauche, questions à droite */}
+        {role === "collaborateur" && (
+          <div className="flex flex-wrap items-center justify-between gap-xs mb-lg">
+            <div className="flex flex-wrap gap-xs">
+              {submitIdeaButton}
+              {myIdeasLink}
+            </div>
+            <div className="flex flex-wrap gap-xs">
+              {askQuestionButton}
+              {myQuestionsLink}
+            </div>
+          </div>
+        )}
+        {role === "manager" && (
+          <div className="flex flex-wrap items-center justify-between gap-xs mb-lg">
+            {submitIdeaButton}
+            {myIdeasLink}
+            {askQuestionButton}
+            {myQuestionsLink}
+            <Link
+              to="/idees-collaborateur"
+              aria-label={pendingIdeas > 0 ? `Idées collaborateur, ${pendingIdeas} en attente` : undefined}
+              className={secondaryButton}
+            >
+              <Icon name="inbox" /> IDÉES COLLABORATEUR
+              <CountBadge count={pendingIdeas} />
+            </Link>
+            <Link
+              to="/questions-collaborateur"
+              aria-label={pendingQuestions > 0 ? `Questions collaborateur, ${pendingQuestions} en attente` : undefined}
+              className={secondaryButton}
+            >
+              <Icon name="forum" /> QUESTIONS COLLABORATEUR
+              <CountBadge count={pendingQuestions} />
+            </Link>
+          </div>
+        )}
 
         <div className="bento-grid">
           {/* News Management & Input */}
