@@ -110,3 +110,24 @@ export function answerErrorMessage(e: unknown): string {
   if (msg.includes("1 à 500")) return `La réponse doit faire entre 1 et ${QUESTION_MAX} caractères.`;
   return msg;
 }
+
+/** Managers de chaque direction, pour l'admin (écran 10) : prénoms par direction. */
+export async function fetchManagersByTeam(): Promise<Record<string, string[]>> {
+  const { data, error } = await db
+    .from("manager_teams")
+    .select("team, allowed_users!inner(first_name, last_name, email)");
+  if (error) throw error;
+  const map: Record<string, string[]> = {};
+  for (const r of data ?? []) {
+    const u = r.allowed_users as { first_name: string | null; last_name: string | null; email: string };
+    const name = (u.first_name ?? "").trim() || u.email.split("@")[0];
+    (map[r.team] ??= []).push(name);
+  }
+  for (const k of Object.keys(map)) map[k].sort((a, b) => a.localeCompare(b, "fr"));
+  return map;
+}
+
+/** « GONTRAN, OPÉRATIONS » : auteur et direction d'origine (vide si inconnue). */
+export function authorLabel(q: Pick<Question, "asked_by_name" | "asked_by_team">): string {
+  return q.asked_by_team ? `${q.asked_by_name}, ${q.asked_by_team}` : q.asked_by_name;
+}

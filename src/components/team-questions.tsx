@@ -9,6 +9,8 @@ import {
   answerErrorMessage,
   answerQuestion,
   answerSchema,
+  authorLabel,
+  fetchManagersByTeam,
   fetchTeamQuestions,
   QUESTION_MAX,
   type Question,
@@ -44,6 +46,13 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
   const list = useQuery({
     queryKey: ["questions", "team", email],
     queryFn: () => fetchTeamQuestions(email),
+    retry: false,
+  });
+
+  const managers = useQuery({
+    queryKey: ["questions", "managers-by-team"],
+    queryFn: fetchManagersByTeam,
+    enabled: isAdmin,
     retry: false,
   });
 
@@ -117,7 +126,9 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
                     <Linkify text={q.body} />
                   </p>
                   <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
-                    Direction : {q.team} · {q.asked_by_name} · Posée le {formatExactDate(q.asked_at)}
+                    Direction : {q.team}
+                    {isAdmin && managers.data?.[q.team] ? ` · Manager : ${managers.data[q.team].join(", ")}` : ""} ·{" "}
+                    {authorLabel(q)} · Posée le {formatExactDate(q.asked_at)}
                   </p>
                 </div>
                 <span className="flex items-center gap-1 border border-outline px-xs py-1 font-label-sm text-label-sm uppercase text-primary">
@@ -160,7 +171,7 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
             <div className="p-sm bg-surface-container border border-outline-variant space-y-xs">
               <p className="italic text-on-surface whitespace-pre-line wrap-anywhere">“{answering.body}”</p>
               <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
-                Direction : {answering.team} · {answering.asked_by_name} · {formatExactDate(answering.asked_at)}
+                Direction : {answering.team} · {authorLabel(answering)} · {formatExactDate(answering.asked_at)}
               </p>
             </div>
             <Field label="Ta réponse" error={errors.body}>
