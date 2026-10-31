@@ -421,7 +421,7 @@ function ManagerSpace() {
                   const only = role === "manager" && myTeams.data?.length === 1 ? myTeams.data[0] : "";
                   setSubmissionForm({ author_name: "", team: only, content: "", status: "en attente" });
                 }}
-                className="flex items-center gap-xs px-md py-xs bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all shadow-sm"
+                className="flex items-center gap-xs px-md py-xs border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
               >
                 <Icon name="add" /> SOUMETTRE UNE IDÉE
               </button>
