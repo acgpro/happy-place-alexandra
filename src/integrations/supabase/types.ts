@@ -331,7 +331,7 @@ export type Database = {
           asked_at?: string
           asked_by_email: string
           asked_by_name: string
-          asked_by_team: string | null
+          asked_by_team?: string | null
           body: string
           id?: string
           status?: Database["public"]["Enums"]["question_status"]
