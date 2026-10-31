@@ -50,3 +50,21 @@ export function questionErrorMessage(e: unknown): string {
   if (msg.includes("questions_body_check")) return `La question doit faire entre 1 et ${QUESTION_MAX} caractères.`;
   return msg;
 }
+
+/** « Mes questions » (CA-F5-4, CA-F5-9) : le filtre sur l'auteur est nécessaire, car un manager lit aussi les questions de ses directions. */
+export async function fetchMyQuestions(email: string): Promise<Question[]> {
+  const { data, error } = await db
+    .from("questions")
+    .select("*")
+    .eq("asked_by_email", email.toLowerCase())
+    .order("asked_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Suppression d'une question en attente par son auteur (CA-F5-10). La base refuse une question déjà répondue. */
+export async function deleteQuestion(id: string) {
+  const { data, error } = await db.from("questions").delete().eq("id", id).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Cette question a déjà reçu une réponse : elle ne peut plus être supprimée.");
+}

@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ChoisirRoleRouteImport } from './routes/choisir-role'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedQuestionsRouteImport } from './routes/_authenticated/questions'
 import { Route as AuthenticatedManageRouteImport } from './routes/_authenticated/manage'
 import { Route as AuthenticatedManageIndexRouteImport } from './routes/_authenticated/manage.index'
 import { Route as AuthenticatedManageBlockersRouteImport } from './routes/_authenticated/manage.blockers'
@@ -44,6 +45,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedQuestionsRoute = AuthenticatedQuestionsRouteImport.update({
+  id: '/questions',
+  path: '/questions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedManageRoute = AuthenticatedManageRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/choisir-role': typeof ChoisirRoleRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/manage': typeof AuthenticatedManageRouteWithChildren
+  '/questions': typeof AuthenticatedQuestionsRoute
   '/manage/blockers': typeof AuthenticatedManageBlockersRoute
   '/manage/metrics': typeof AuthenticatedManageMetricsRoute
   '/manage/news': typeof AuthenticatedManageNewsRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/choisir-role': typeof ChoisirRoleRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/': typeof AuthenticatedIndexRoute
+  '/questions': typeof AuthenticatedQuestionsRoute
   '/manage/blockers': typeof AuthenticatedManageBlockersRoute
   '/manage/metrics': typeof AuthenticatedManageMetricsRoute
   '/manage/news': typeof AuthenticatedManageNewsRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/manage': typeof AuthenticatedManageRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/questions': typeof AuthenticatedQuestionsRoute
   '/_authenticated/manage/blockers': typeof AuthenticatedManageBlockersRoute
   '/_authenticated/manage/metrics': typeof AuthenticatedManageMetricsRoute
   '/_authenticated/manage/news': typeof AuthenticatedManageNewsRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/choisir-role'
     | '/sitemap.xml'
     | '/manage'
+    | '/questions'
     | '/manage/blockers'
     | '/manage/metrics'
     | '/manage/news'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/choisir-role'
     | '/sitemap.xml'
     | '/'
+    | '/questions'
     | '/manage/blockers'
     | '/manage/metrics'
     | '/manage/news'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/_authenticated/manage'
     | '/_authenticated/'
+    | '/_authenticated/questions'
     | '/_authenticated/manage/blockers'
     | '/_authenticated/manage/metrics'
     | '/_authenticated/manage/news'
@@ -211,6 +223,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/questions': {
+      id: '/_authenticated/questions'
+      path: '/questions'
+      fullPath: '/questions'
+      preLoaderRoute: typeof AuthenticatedQuestionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/manage': {
@@ -289,11 +308,13 @@ const AuthenticatedManageRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedManageRoute: typeof AuthenticatedManageRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedQuestionsRoute: typeof AuthenticatedQuestionsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedManageRoute: AuthenticatedManageRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedQuestionsRoute: AuthenticatedQuestionsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

@@ -435,6 +435,12 @@ function ManagerSpace() {
               >
                 <Icon name="help" /> POSER UNE QUESTION
               </button>
+              <Link
+                to="/questions"
+                className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
+              >
+                <Icon name="chat" /> MES QUESTIONS
+              </Link>
             </div>
           </div>
           <div className="flex flex-wrap gap-xs items-center md:items-end md:justify-end">
