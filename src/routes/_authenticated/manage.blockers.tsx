@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/manage/blockers")({
   head: () => ({
     meta: [
       { title: "Gestion des points bloquants — Happy Place" },
-      { name: "description", content: "Créez, modifiez et supprimez les points bloquants dans Happy Place." },
+      { name: "description", content: "Crée, modifie et supprime les points bloquants dans Happy Place." },
       { property: "og:title", content: "Gestion des points bloquants — Happy Place" },
       { property: "og:description", content: "Gérez les alertes opérationnelles des missions de recrutement dans Happy Place." },
       { property: "og:type", content: "website" },

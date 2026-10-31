@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/manage/news")({
   head: () => ({
     meta: [
       { title: "Gestion des actualités — Happy Place" },
-      { name: "description", content: "Créez, modifiez et supprimez les actualités de Happy Place." },
+      { name: "description", content: "Crée, modifie et supprime les actualités de Happy Place." },
       { property: "og:title", content: "Gestion des actualités — Happy Place" },
       { property: "og:description", content: "Gérez les actualités du cabinet de recrutement dans Happy Place." },
       { property: "og:type", content: "website" },

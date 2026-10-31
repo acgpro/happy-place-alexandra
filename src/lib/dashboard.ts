@@ -156,14 +156,14 @@ export async function publishDraftNews(id: string) {
     .eq("status", "brouillon")
     .select("id");
   if (error) throw error;
-  if (!data?.length) throw new Error("Vous n'avez pas le droit de publier cette actualité.");
+  if (!data?.length) throw new Error("Tu n'as pas le droit de publier cette actualité.");
 }
 
 export async function deleteDraftNews(id: string, imagePath?: string | null) {
   await removeNewsImageFile(imagePath);
   const { data, error } = await db.from("news").delete().eq("id", id).select("id");
   if (error) throw error;
-  if (!data?.length) throw new Error("Vous n'avez pas le droit de supprimer cette actualité.");
+  if (!data?.length) throw new Error("Tu n'as pas le droit de supprimer cette actualité.");
 }
 
 export async function fetchSubmissions(): Promise<Submission[]> {
@@ -246,7 +246,7 @@ export async function exportMyRecentSubmissions(email: string): Promise<number> 
   return rows.length;
 }
 
-const REVIEW_FORBIDDEN_MSG = "Vous ne pouvez pas valider ou refuser cette idée";
+const REVIEW_FORBIDDEN_MSG = "Tu ne peux pas valider ou refuser cette idée";
 
 export async function reviewSubmission(
   input:

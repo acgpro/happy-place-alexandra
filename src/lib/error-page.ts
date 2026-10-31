@@ -19,7 +19,7 @@ export function renderErrorPage(): string {
   <body>
     <div class="card">
       <h1>Cette page ne s'est pas chargée</h1>
-      <p>Une erreur s'est produite. Vous pouvez réessayer ou revenir à l'accueil.</p>
+      <p>Une erreur s'est produite. Tu peux réessayer ou revenir à l'accueil.</p>
       <div class="actions">
         <button class="primary" onclick="location.reload()">Réessayer</button>
         <a class="secondary" href="/">Retour à l'accueil</a>

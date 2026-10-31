@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/manage/submissions")({
   head: () => ({
     meta: [
       { title: "Gestion des idées — Happy Place" },
-      { name: "description", content: "Gestion des idées : créez, lisez et supprimez les idées dans Happy Place." },
+      { name: "description", content: "Gestion des idées : crée, lis et supprime les idées dans Happy Place." },
       { property: "og:title", content: "Gestion des idées — Happy Place" },
       { property: "og:description", content: "Gestion des idées des pôles du cabinet dans Happy Place." },
       { property: "og:type", content: "website" },
