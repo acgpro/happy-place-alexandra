@@ -85,7 +85,10 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
     answer.mutate({ id: answering.id, text: r.data.body });
   }
 
-  const all = list.data ?? [];
+  // CA-F5-7 : une question répondue quitte la liste des autres managers ; celui qui a répondu la garde.
+  const all = (list.data ?? []).filter(
+    (q) => q.status === "en attente" || q.answered_by_email?.toLowerCase() === email.toLowerCase(),
+  );
   const pending = all.filter((q) => q.status === "en attente");
   const shown = isAdmin ? pending : all;
   const title = isAdmin ? "Questions en attente" : "Questions collaborateur";
