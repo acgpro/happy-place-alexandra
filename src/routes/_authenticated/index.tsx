@@ -13,6 +13,7 @@ import { AttachmentLink } from "@/components/attachment-link";
 import { CharCounter, SubmissionPreview, formatExactDate, rejectionErrorMessage } from "@/components/expandable-card";
 import { Linkify } from "@/components/linkify";
 import { SubmissionReader } from "@/components/submission-reader";
+import { TeamQuestions } from "@/components/team-questions";
 import { ResponseBlock } from "@/components/submission-response";
 import { NewsReader } from "@/components/news-reader";
 import { DepartureNotices } from "@/components/departure-notices";
@@ -733,6 +734,11 @@ function ManagerSpace() {
               ))}
             </div>
           </section>}
+
+          {/* F5 : questions des collaborateurs (manager : répondre ; admin : lecture seule) */}
+          {(role === "manager" || isAdmin) && email && (
+            <TeamQuestions role={isAdmin ? "admin" : "manager"} email={email} />
+          )}
 
           {/* Mes soumissions */}
           {mine.data && mine.data.length > 0 && (
