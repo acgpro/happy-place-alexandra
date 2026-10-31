@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ChoisirRoleRouteImport } from './routes/choisir-role'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedIdeesRouteImport } from './routes/_authenticated/idees'
 import { Route as AuthenticatedQuestionsRouteImport } from './routes/_authenticated/questions'
 import { Route as AuthenticatedManageRouteImport } from './routes/_authenticated/manage'
 import { Route as AuthenticatedManageIndexRouteImport } from './routes/_authenticated/manage.index'
@@ -45,6 +46,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedIdeesRoute = AuthenticatedIdeesRouteImport.update({
+  id: '/idees',
+  path: '/idees',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedQuestionsRoute = AuthenticatedQuestionsRouteImport.update({
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/choisir-role': typeof ChoisirRoleRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/manage': typeof AuthenticatedManageRouteWithChildren
+  '/idees': typeof AuthenticatedIdeesRoute
   '/questions': typeof AuthenticatedQuestionsRoute
   '/manage/blockers': typeof AuthenticatedManageBlockersRoute
   '/manage/metrics': typeof AuthenticatedManageMetricsRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/choisir-role': typeof ChoisirRoleRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/': typeof AuthenticatedIndexRoute
+  '/idees': typeof AuthenticatedIdeesRoute
   '/questions': typeof AuthenticatedQuestionsRoute
   '/manage/blockers': typeof AuthenticatedManageBlockersRoute
   '/manage/metrics': typeof AuthenticatedManageMetricsRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/manage': typeof AuthenticatedManageRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/idees': typeof AuthenticatedIdeesRoute
   '/_authenticated/questions': typeof AuthenticatedQuestionsRoute
   '/_authenticated/manage/blockers': typeof AuthenticatedManageBlockersRoute
   '/_authenticated/manage/metrics': typeof AuthenticatedManageMetricsRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/choisir-role'
     | '/sitemap.xml'
     | '/manage'
+    | '/idees'
     | '/questions'
     | '/manage/blockers'
     | '/manage/metrics'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/choisir-role'
     | '/sitemap.xml'
     | '/'
+    | '/idees'
     | '/questions'
     | '/manage/blockers'
     | '/manage/metrics'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/_authenticated/manage'
     | '/_authenticated/'
+    | '/_authenticated/idees'
     | '/_authenticated/questions'
     | '/_authenticated/manage/blockers'
     | '/_authenticated/manage/metrics'
@@ -223,6 +235,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/idees': {
+      id: '/_authenticated/idees'
+      path: '/idees'
+      fullPath: '/idees'
+      preLoaderRoute: typeof AuthenticatedIdeesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/questions': {
@@ -308,12 +327,14 @@ const AuthenticatedManageRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedManageRoute: typeof AuthenticatedManageRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedIdeesRoute: typeof AuthenticatedIdeesRoute
   AuthenticatedQuestionsRoute: typeof AuthenticatedQuestionsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedManageRoute: AuthenticatedManageRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedIdeesRoute: AuthenticatedIdeesRoute,
   AuthenticatedQuestionsRoute: AuthenticatedQuestionsRoute,
 }
 

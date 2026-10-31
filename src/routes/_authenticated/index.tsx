@@ -11,10 +11,8 @@ import { QUESTION_MAX, askQuestion, fetchAskableTeams, questionErrorMessage, que
 import { BrandHeader } from "@/components/brand-header";
 import { AttachmentLink } from "@/components/attachment-link";
 import { CharCounter, SubmissionPreview, formatExactDate, rejectionErrorMessage } from "@/components/expandable-card";
-import { Linkify } from "@/components/linkify";
 import { SubmissionReader } from "@/components/submission-reader";
 import { TeamQuestions } from "@/components/team-questions";
-import { ResponseBlock } from "@/components/submission-response";
 import { NewsReader } from "@/components/news-reader";
 import { DepartureNotices } from "@/components/departure-notices";
 import { NewsImage, NewsLinks, NewsMediaEditor } from "@/components/news-media";
@@ -27,9 +25,7 @@ import {
   deltaText,
   fetchNews,
   fetchSubmissions,
-  fetchMySubmissions,
   fetchMyFullName,
-  fetchResponses,
   exportMyRecentSubmissions,
   REJECTION_CATEGORIES,
   type News,
@@ -193,19 +189,6 @@ function ManagerSpace() {
   const submissions = useQuery({
     queryKey: ["submissions"],
     queryFn: fetchSubmissions,
-    retry: false,
-  });
-  const mine = useQuery({
-    queryKey: ["submissions", "mine", email],
-    queryFn: () => fetchMySubmissions(email ?? ""),
-    enabled: !!email,
-    retry: false,
-  });
-  const myIds = mine.data?.map((s) => s.id) ?? [];
-  const myResponses = useQuery({
-    queryKey: ["responses", myIds],
-    queryFn: () => fetchResponses(myIds),
-    enabled: myIds.length > 0,
     retry: false,
   });
   // Admin : rôle des auteurs affichés, pour ne proposer que les idées de managers et d'admins.
@@ -415,33 +398,43 @@ function ManagerSpace() {
               Vue d'ensemble
             </p>
             <h1 className="font-headline-lg text-headline-lg text-primary">Happy Place</h1>
-            <div className="flex flex-wrap gap-xs">
-              <button
-                onClick={() => {
-                  setSubmissionErrors({});
-                  const only = role === "manager" && myTeams.data?.length === 1 ? myTeams.data[0] : "";
-                  setSubmissionForm({ author_name: "", team: only, content: "", status: "en attente" });
-                }}
-                className="flex items-center gap-xs px-md py-xs border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
-              >
-                <Icon name="add" /> SOUMETTRE UNE IDÉE
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuestionErrors({});
-                  setQuestionForm({ team: "", body: "" });
-                }}
-                className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
-              >
-                <Icon name="help" /> POSER UNE QUESTION
-              </button>
-              <Link
-                to="/questions"
-                className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
-              >
-                <Icon name="chat" /> MES QUESTIONS
-              </Link>
+            <div className="flex flex-col gap-xs items-start">
+              <div className="flex flex-wrap gap-xs">
+                <button
+                  onClick={() => {
+                    setSubmissionErrors({});
+                    const only = role === "manager" && myTeams.data?.length === 1 ? myTeams.data[0] : "";
+                    setSubmissionForm({ author_name: "", team: only, content: "", status: "en attente" });
+                  }}
+                  className="flex items-center gap-xs px-md py-xs border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
+                >
+                  <Icon name="add" /> SOUMETTRE UNE IDÉE
+                </button>
+                <Link
+                  to="/idees"
+                  className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
+                >
+                  <Icon name="lightbulb" /> MES IDÉES
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuestionErrors({});
+                    setQuestionForm({ team: "", body: "" });
+                  }}
+                  className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
+                >
+                  <Icon name="help" /> POSER UNE QUESTION
+                </button>
+                <Link
+                  to="/questions"
+                  className="flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
+                >
+                  <Icon name="chat" /> MES QUESTIONS
+                </Link>
+              </div>
             </div>
           </div>
           <div className="flex flex-col gap-xs items-start md:items-end">
@@ -740,45 +733,6 @@ function ManagerSpace() {
           {/* F5 : questions des collaborateurs (manager : répondre ; admin : lecture seule) */}
           {(role === "manager" || isAdmin) && email && (
             <TeamQuestions role={isAdmin ? "admin" : "manager"} email={email} />
-          )}
-
-          {/* Mes soumissions */}
-          {mine.data && mine.data.length > 0 && (
-            <section className="col-span-12 min-w-0 bg-surface-container-lowest border border-outline-variant p-md">
-              <h2 className="font-headline-sm text-headline-sm text-primary border-b border-outline-variant pb-sm mb-md">
-                Mes idées
-              </h2>
-              <div className="space-y-xs">
-                {mine.data.map((s) => (
-                  <div key={s.id} className="p-sm border border-outline-variant bg-card min-w-0 overflow-hidden">
-                    <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
-                    <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
-                    <p className="text-[11px] font-label-sm text-on-surface-variant uppercase mt-xs">
-                      {s.status} • {s.team} • {timeAgo(s.created_at)}
-                    </p>
-                    {s.status === "en attente" && (
-                      <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">Pas encore de réponse</p>
-                    )}
-                    {s.status === "validée" &&
-                      (() => {
-                        const response = myResponses.data?.find((r) => r.submission_id === s.id);
-                        if (response) return <ResponseBlock response={response} className="mt-xs" />;
-                        return myResponses.isSuccess ? (
-                          <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
-                            Aucune réponse enregistrée
-                          </p>
-                        ) : null;
-                      })()}
-                    {s.status === "refusée" && s.rejection_category && (
-                      <div className="mt-xs p-xs bg-error-container text-on-error-container text-body-sm wrap-anywhere">
-                        <p className="font-bold">Motif : {s.rejection_category}</p>
-                        <p className="whitespace-pre-line">Raison : <Linkify text={s.rejection_note ?? ""} /></p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
           )}
 
           <ValidatedSubmissions
