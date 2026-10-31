@@ -12,6 +12,7 @@ import {
   authorLabel,
   fetchManagersByTeam,
   fetchTeamQuestions,
+  managersLabel,
   QUESTION_MAX,
   type Question,
 } from "@/lib/questions";
@@ -130,7 +131,7 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
                   </p>
                   <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
                     Direction : {q.team}
-                    {isAdmin && managers.data?.[q.team] ? ` · Manager : ${managers.data[q.team].join(", ")}` : ""} ·{" "}
+                    {isAdmin && managers.data?.[q.team] ? ` · Manager : ${managersLabel(managers.data[q.team])}` : ""} ·{" "}
                     {authorLabel(q)} · Posée le {formatExactDate(q.asked_at)}
                   </p>
                 </div>

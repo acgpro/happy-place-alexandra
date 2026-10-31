@@ -121,7 +121,9 @@ export async function fetchManagersByTeam(): Promise<Record<string, string[]>> {
   for (const r of data ?? []) {
     const u = r.allowed_users as { first_name: string | null; last_name: string | null; email: string };
     const name = (u.first_name ?? "").trim() || u.email.split("@")[0];
-    (map[r.team] ??= []).push(name);
+    const list = (map[r.team] ??= []);
+    // Prénoms identiques (comptes de test, homonymes) : affichés une seule fois.
+    if (!list.some((n) => n.toLowerCase() === name.toLowerCase())) list.push(name);
   }
   for (const k of Object.keys(map)) map[k].sort((a, b) => a.localeCompare(b, "fr"));
   return map;
@@ -130,4 +132,10 @@ export async function fetchManagersByTeam(): Promise<Record<string, string[]>> {
 /** « GONTRAN, OPÉRATIONS » : auteur et direction d'origine (vide si inconnue). */
 export function authorLabel(q: Pick<Question, "asked_by_name" | "asked_by_team">): string {
   return q.asked_by_team ? `${q.asked_by_name}, ${q.asked_by_team}` : q.asked_by_name;
+}
+
+/** « Kesha, Sophie +2 » : au plus 3 prénoms, puis le nombre restant. */
+export function managersLabel(names: string[]): string {
+  const shown = names.slice(0, 3).join(", ");
+  return names.length > 3 ? `${shown} +${names.length - 3}` : shown;
 }
