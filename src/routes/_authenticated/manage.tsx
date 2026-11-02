@@ -33,7 +33,6 @@ export const Route = createFileRoute("/_authenticated/manage")({
 
 /** pending : clé du compteur de useAdminPendingCounts ; absente = pas d'état « en attente ». */
 const tabs = [
-  { to: "/manage/news", label: "ACTUALITÉS", name: "Actualités", pending: "news" },
   { to: "/manage/submissions", label: "IDÉES", name: "Idées", pending: "ideas" },
   { to: "/manage/blockers", label: "POINTS BLOQUANTS", name: "Points bloquants", pending: "blockers" },
   { to: "/manage/metrics", label: "INDICATEURS", name: "Indicateurs", pending: null },

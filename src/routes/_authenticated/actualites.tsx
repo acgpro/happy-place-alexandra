@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/manage/crud-ui";
+import { BrandHeader } from "@/components/brand-header";
 import { newsSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
   createNews,
@@ -26,19 +27,49 @@ import {
 import { NewsImage, NewsLinks, NewsMediaEditor } from "@/components/news-media";
 import { emptyMedia, linkErrors, mediaFromNews, toNewsLinks, type MediaDraft } from "@/lib/news-media";
 
-export const Route = createFileRoute("/_authenticated/manage/news")({
+export const Route = createFileRoute("/_authenticated/actualites")({
   head: () => ({
     meta: [
-      { title: "Gestion des actualités — Happy Place" },
+      { title: "Gérer les actualités — Happy Place" },
       { name: "description", content: "Crée, modifie et supprime les actualités de Happy Place." },
-      { property: "og:title", content: "Gestion des actualités — Happy Place" },
+      { property: "og:title", content: "Gérer les actualités — Happy Place" },
       { property: "og:description", content: "Gérez les actualités du cabinet de recrutement dans Happy Place." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: ManageNews,
+  beforeLoad: ({ context }) => {
+    if (context.role !== "admin") throw redirect({ to: "/" });
+  },
+  component: NewsPage,
 });
+
+/** Page autonome « Gérer les actualités » (admin), sur le modèle de « Gestion des données », sans onglets. */
+function NewsPage() {
+  return (
+    <div className="bg-background text-on-surface font-body-md min-h-screen">
+      <BrandHeader />
+      <main className="w-full max-w-interface mx-auto p-sm md:p-md space-y-md">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-sm">
+          <div className="space-y-1">
+            <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
+              Gérer les actualités
+            </p>
+            <h1 className="font-headline-lg text-headline-lg text-primary">Gérer les actualités</h1>
+          </div>
+          <Link
+            to="/"
+            className="px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container"
+          >
+            ← RETOUR À LA VUE D'ENSEMBLE
+          </Link>
+        </div>
+
+        <ManageNews />
+      </main>
+    </div>
+  );
+}
 
 const newsStatusLabels: Record<string, string> = {
   brouillon: "Brouillon",

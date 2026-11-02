@@ -97,7 +97,7 @@ function ManagerSpace() {
   const { role, email, user } = Route.useRouteContext();
   const isAdmin = role === "admin";
   const canReview = role === "admin" || role === "manager";
-  const canWriteNews = canReview;
+  const canWriteNews = role === "manager";
   const myEmail = (email ?? "").toLowerCase();
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const myName =
@@ -251,8 +251,10 @@ function ManagerSpace() {
   // Badges de l'accueil manager : mêmes requêtes (lecture seule) et mêmes filtres que les pages dédiées.
   const pendingIdeas = usePendingSubmissions(myEmail, role === "manager" && !!myEmail).pending.length;
   const pendingQuestions = useTeamQuestions(email ?? "", role === "manager" && !!email).pending.length;
-  // Badge « GÉRER LES DONNÉES » : brouillons + idées à valider + points bloquants OUVERT
-  const adminPending = useAdminPendingCounts(myEmail, isAdmin && !!myEmail).total;
+  // Badges admin : « GÉRER LES ACTUALITÉS » = brouillons ; « GÉRER LES DONNÉES » = idées à valider + points bloquants OUVERT
+  const adminCounts = useAdminPendingCounts(myEmail, isAdmin && !!myEmail);
+  const adminNews = adminCounts.news;
+  const adminPending = adminCounts.total;
 
   function sendSubmission(e: React.FormEvent) {
     e.preventDefault();
@@ -366,7 +368,15 @@ function ManagerSpace() {
               {askQuestionButton}
               {myQuestionsLink}
               <Link
-                to="/manage/news"
+                to="/actualites"
+                aria-label={adminNews > 0 ? `Gérer les actualités, ${adminNews} en attente` : undefined}
+                className={secondaryButton}
+              >
+                <Icon name="newspaper" /> GÉRER LES ACTUALITÉS
+                <CountBadge count={adminNews} />
+              </Link>
+              <Link
+                to="/manage/submissions"
                 aria-label={adminPending > 0 ? `Gérer les données, ${adminPending} en attente` : undefined}
                 className={secondaryButton}
               >
@@ -408,9 +418,11 @@ function ManagerSpace() {
               <h2 className="font-headline-sm text-headline-sm text-primary">
                 Actualités du cabinet
               </h2>
-              <span className="font-label-sm text-label-sm text-on-surface-variant">
-                {drafts} brouillon{drafts > 1 ? "s" : ""} en attente
-              </span>
+              {canWriteNews && (
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  {drafts} brouillon{drafts > 1 ? "s" : ""} en attente
+                </span>
+              )}
             </div>
             {canWriteNews && <form
               className="space-y-md"
