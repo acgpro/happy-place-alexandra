@@ -360,30 +360,26 @@ function ManagerSpace() {
         )}
         {role === "admin" && (
           <div className="flex flex-wrap items-center justify-between gap-xs mb-lg">
-            <div className="flex flex-wrap gap-xs">
-              {submitIdeaButton}
-              {myIdeasLink}
-            </div>
-            <div className="flex flex-wrap gap-xs">
-              {askQuestionButton}
-              {myQuestionsLink}
-              <Link
-                to="/actualites"
-                aria-label={adminNews > 0 ? `Gérer les actualités, ${adminNews} en attente` : undefined}
-                className={secondaryButton}
-              >
-                <Icon name="newspaper" /> GÉRER LES ACTUALITÉS
-                <CountBadge count={adminNews} />
-              </Link>
-              <Link
-                to="/manage/submissions"
-                aria-label={adminPending > 0 ? `Gérer les données, ${adminPending} en attente` : undefined}
-                className={secondaryButton}
-              >
-                <Icon name="database" /> GÉRER LES DONNÉES
-                <CountBadge count={adminPending} />
-              </Link>
-            </div>
+            {submitIdeaButton}
+            {myIdeasLink}
+            {askQuestionButton}
+            {myQuestionsLink}
+            <Link
+              to="/actualites"
+              aria-label={adminNews > 0 ? `Gérer les actualités, ${adminNews} en attente` : undefined}
+              className={secondaryButton}
+            >
+              <Icon name="newspaper" /> GÉRER LES ACTUALITÉS
+              <CountBadge count={adminNews} />
+            </Link>
+            <Link
+              to="/manage/submissions"
+              aria-label={adminPending > 0 ? `Gérer les données, ${adminPending} en attente` : undefined}
+              className={secondaryButton}
+            >
+              <Icon name="database" /> GÉRER LES DONNÉES
+              <CountBadge count={adminPending} />
+            </Link>
           </div>
         )}
         {role === "manager" && (
