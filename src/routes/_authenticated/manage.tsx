@@ -81,8 +81,9 @@ function ManageLayout() {
                 key={t.to}
                 to={t.to}
                 aria-label={count > 0 ? `${t.name}, ${count} en attente` : undefined}
-                className="flex items-center gap-xs px-md py-xs border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-container"
+                className="flex items-center gap-xs px-md py-xs border font-label-md text-label-md"
                 activeProps={{ className: "bg-primary text-on-primary border-primary" }}
+                inactiveProps={{ className: "text-on-surface-variant border-outline-variant hover:bg-surface-container" }}
               >
                 {t.label}
                 <CountBadge count={count} />
