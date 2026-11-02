@@ -499,7 +499,8 @@ function ManagerSpace() {
                 </div>
               </div>
             </form>}
-            <div className="mt-md pt-md border-t border-outline-variant">
+            {/* Séparateur sous le formulaire de rédaction : affiché seulement quand ce formulaire existe (manager) */}
+            <div className={canWriteNews ? "mt-md pt-md border-t border-outline-variant" : ""}>
               {canWriteNews && visibleDrafts.length > 0 && (
                 <>
                   <h3 className="font-label-md text-label-md text-on-surface-variant mb-sm">
@@ -604,7 +605,6 @@ function ManagerSpace() {
                         </p>
                       </div>
                     </div>
-                    {isAdmin && <Icon name="edit" className="text-on-surface-variant" />}
                     </div>
                     <NewsLinks links={n.links} />
                   </button>
