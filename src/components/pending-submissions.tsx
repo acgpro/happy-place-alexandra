@@ -358,6 +358,7 @@ export function PendingSubmissions({
                 IA, à relire
               </span>
             </div>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">Le texte de l'idée est envoyé à un service d'IA externe, via Make, pour proposer ce brouillon. Le nom, l'e-mail et l'équipe de l'auteur ne sont pas transmis.</p>
             <p role="status" className="font-body-sm text-body-sm text-on-surface-variant">
               {draftMessage}
             </p>
