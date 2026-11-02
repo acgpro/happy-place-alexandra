@@ -15,6 +15,8 @@ import { TeamQuestions, useTeamQuestions } from "@/components/team-questions";
 import { PendingSubmissions, usePendingSubmissions } from "@/components/pending-submissions";
 import { NewsReader } from "@/components/news-reader";
 import { DepartureNotices } from "@/components/departure-notices";
+import { CountBadge } from "@/components/count-badge";
+import { useAdminPendingCounts } from "@/lib/admin-pending";
 import { NewsImage, NewsLinks, NewsMediaEditor } from "@/components/news-media";
 import { emptyMedia, linkErrors, mediaFromNews, toNewsLinks, type MediaDraft } from "@/lib/news-media";
 import { BlockerArchive, ValidatedSubmissions } from "@/components/dashboard-extras";
@@ -70,16 +72,6 @@ function Icon({ name, className = "" }: { name: string; className?: string }) {
   return (
     <span aria-hidden="true" className={`material-symbols-outlined ${className}`}>
       {name}
-    </span>
-  );
-}
-
-/** Nombre d'éléments en attente sur un bouton ; masqué à 0, annoncé par le nom accessible du bouton. */
-function CountBadge({ count }: { count: number }) {
-  if (count <= 0) return null;
-  return (
-    <span aria-hidden="true" className="bg-tertiary-fixed text-on-tertiary-fixed px-xs font-label-sm text-label-sm">
-      {count}
     </span>
   );
 }
@@ -259,6 +251,8 @@ function ManagerSpace() {
   // Badges de l'accueil manager : mêmes requêtes (lecture seule) et mêmes filtres que les pages dédiées.
   const pendingIdeas = usePendingSubmissions(myEmail, role === "manager" && !!myEmail).pending.length;
   const pendingQuestions = useTeamQuestions(email ?? "", role === "manager" && !!email).pending.length;
+  // Badge « GÉRER LES DONNÉES » : brouillons + idées à valider + points bloquants OUVERT
+  const adminPending = useAdminPendingCounts(myEmail, isAdmin && !!myEmail).total;
 
   function sendSubmission(e: React.FormEvent) {
     e.preventDefault();
@@ -318,24 +312,12 @@ function ManagerSpace() {
       <BrandHeader />
       <main className="flex-grow w-full max-w-interface mx-auto p-sm md:p-md space-y-md">
         {email && <DepartureNotices email={email} />}
-        <div className={`flex flex-col md:flex-row md:items-end justify-between gap-sm ${role === "admin" ? "mb-lg" : ""}`}>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-sm">
           <div className="space-y-sm">
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
               Vue d'ensemble
             </p>
             <h1 className="font-headline-lg text-headline-lg text-primary">Happy Place</h1>
-            {role === "admin" && (
-              <div className="flex flex-col gap-xs items-start">
-                <div className="flex flex-wrap gap-xs">
-                  {submitIdeaButton}
-                  {myIdeasLink}
-                </div>
-                <div className="flex flex-wrap gap-xs">
-                  {askQuestionButton}
-                  {myQuestionsLink}
-                </div>
-              </div>
-            )}
           </div>
           <div className="flex flex-col gap-xs items-start md:items-end">
             <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -351,12 +333,6 @@ function ManagerSpace() {
             >
               <Icon name="file_download" /> {exportReport.isPending ? "EXPORT EN COURS…" : "EXPORTER LE RAPPORT"}
             </Button>
-            {isAdmin && (<Link
-              to="/manage/news"
-              className="flex items-center gap-xs px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container transition-all"
-            >
-              <Icon name="database" /> GÉRER LES DONNÉES
-            </Link>)}
             <button
               onClick={() => signOut()}
               className="flex items-center gap-xs px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container"
@@ -367,7 +343,7 @@ function ManagerSpace() {
           </div>
         </div>
 
-        {/* Collaborateur et manager : une rangée pleine largeur, idées à gauche, questions à droite */}
+        {/* Collaborateur et admin : une rangée pleine largeur, idées à gauche, questions (et gestion) à droite */}
         {role === "collaborateur" && (
           <div className="flex flex-wrap items-center justify-between gap-xs mb-lg">
             <div className="flex flex-wrap gap-xs">
@@ -377,6 +353,26 @@ function ManagerSpace() {
             <div className="flex flex-wrap gap-xs">
               {askQuestionButton}
               {myQuestionsLink}
+            </div>
+          </div>
+        )}
+        {role === "admin" && (
+          <div className="flex flex-wrap items-center justify-between gap-xs mb-lg">
+            <div className="flex flex-wrap gap-xs">
+              {submitIdeaButton}
+              {myIdeasLink}
+            </div>
+            <div className="flex flex-wrap gap-xs">
+              {askQuestionButton}
+              {myQuestionsLink}
+              <Link
+                to="/manage/news"
+                aria-label={adminPending > 0 ? `Gérer les données, ${adminPending} en attente` : undefined}
+                className={secondaryButton}
+              >
+                <Icon name="database" /> GÉRER LES DONNÉES
+                <CountBadge count={adminPending} />
+              </Link>
             </div>
           </div>
         )}

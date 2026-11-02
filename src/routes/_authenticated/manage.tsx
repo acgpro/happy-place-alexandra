@@ -3,7 +3,9 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { BrandHeader } from "@/components/brand-header";
+import { CountBadge } from "@/components/count-badge";
 import { processAttachmentDeletionQueue } from "@/lib/dashboard";
+import { useAdminPendingCounts } from "@/lib/admin-pending";
 
 export const Route = createFileRoute("/_authenticated/manage")({
   head: () => ({
@@ -29,16 +31,20 @@ export const Route = createFileRoute("/_authenticated/manage")({
   component: ManageLayout,
 });
 
+/** pending : clé du compteur de useAdminPendingCounts ; absente = pas d'état « en attente ». */
 const tabs = [
-  { to: "/manage/news", label: "ACTUALITÉS" },
-  { to: "/manage/submissions", label: "IDÉES" },
-  { to: "/manage/blockers", label: "POINTS BLOQUANTS" },
-  { to: "/manage/metrics", label: "INDICATEURS" },
-  { to: "/manage/users", label: "UTILISATEURS AUTORISÉS" },
+  { to: "/manage/news", label: "ACTUALITÉS", name: "Actualités", pending: "news" },
+  { to: "/manage/submissions", label: "IDÉES", name: "Idées", pending: "ideas" },
+  { to: "/manage/blockers", label: "POINTS BLOQUANTS", name: "Points bloquants", pending: "blockers" },
+  { to: "/manage/metrics", label: "INDICATEURS", name: "Indicateurs", pending: null },
+  { to: "/manage/users", label: "UTILISATEURS AUTORISÉS", name: "Utilisateurs autorisés", pending: null },
 ] as const;
 
 function ManageLayout() {
   const qc = useQueryClient();
+  const { email } = Route.useRouteContext();
+  const myEmail = (email ?? "").toLowerCase();
+  const counts = useAdminPendingCounts(myEmail, !!myEmail);
   // Suppression silencieuse des pièces jointes échues, une fois par chargement de /manage
   useEffect(() => {
     processAttachmentDeletionQueue()
@@ -69,16 +75,21 @@ function ManageLayout() {
         </div>
 
         <nav className="flex flex-wrap gap-xs border-b border-outline-variant pb-sm">
-          {tabs.map((t) => (
-            <Link
-              key={t.to}
-              to={t.to}
-              className="px-md py-xs border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-container"
-              activeProps={{ className: "bg-primary text-on-primary border-primary" }}
-            >
-              {t.label}
-            </Link>
-          ))}
+          {tabs.map((t) => {
+            const count = t.pending ? counts[t.pending] : 0;
+            return (
+              <Link
+                key={t.to}
+                to={t.to}
+                aria-label={count > 0 ? `${t.name}, ${count} en attente` : undefined}
+                className="flex items-center gap-xs px-md py-xs border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-container"
+                activeProps={{ className: "bg-primary text-on-primary border-primary" }}
+              >
+                {t.label}
+                <CountBadge count={count} />
+              </Link>
+            );
+          })}
         </nav>
 
         <Outlet />
