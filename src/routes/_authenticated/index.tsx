@@ -352,11 +352,11 @@ function ManagerSpace() {
             </p>
             <h1 className="font-headline-lg text-headline-lg text-primary">Happy Place</h1>
           </div>
-          <div className="flex flex-col gap-xs items-start md:items-end">
+          <div className="flex flex-col gap-xs items-stretch sm:items-start md:items-end">
             <span className="font-label-sm text-label-sm text-on-surface-variant">
               {email} · {roleLabel}
             </span>
-            <div className="flex flex-wrap gap-xs md:justify-end">
+            <div className="flex flex-col items-stretch gap-xs sm:flex-row sm:flex-wrap md:justify-end">
             <Button
               type="button"
               variant="outline"
