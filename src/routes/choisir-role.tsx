@@ -23,17 +23,17 @@ const ROLES: { value: AppRole; label: string; description: string }[] = [
   {
     value: "collaborateur",
     label: "Collaborateur",
-    description: "Je lis les actualités et les indicateurs, et je remonte des idées, questions ou problèmes à mon équipe.",
+    description: "Je lis les actualités et les indicateurs, je soumets des idées à mon manager et je pose des questions à une direction.",
   },
   {
     value: "manager",
     label: "Manager",
-    description: "Je valide ou refuse les demandes de mon équipe, je rédige des actualités et je suis les points bloquants.",
+    description: "Je valide ou refuse les idées de mon équipe, je rédige des actualités et je suis les points bloquants.",
   },
   {
     value: "admin",
     label: "Admin",
-    description: "Je gère tout : contenus, indicateurs, équipes et utilisateurs.",
+    description: "Je gère les actualités, les indicateurs, les points bloquants, les idées et les utilisateurs autorisés.",
   },
 ];
 
