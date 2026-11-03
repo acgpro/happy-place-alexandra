@@ -459,7 +459,7 @@ function UsersPage() {
       <Dialog open={!!roleDialog} onOpenChange={(o) => !o && setRoleDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Équipe de {roleDialog?.email}</DialogTitle>
+            <DialogTitle className="wrap-anywhere">Équipe de {roleDialog?.email}</DialogTitle>
           </DialogHeader>
           <select
             value={roleDialog?.team ?? ""}
