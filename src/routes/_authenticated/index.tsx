@@ -378,19 +378,19 @@ function ManagerSpace() {
 
         {/* Collaborateur et admin : une rangée pleine largeur, idées à gauche, questions (et gestion) à droite */}
         {role === "collaborateur" && (
-          <div className="flex flex-wrap items-center justify-between gap-xs mb-lg">
-            <div className="flex flex-wrap gap-xs">
+          <div className="flex flex-col items-stretch gap-xs mb-lg sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex flex-col items-stretch gap-xs sm:flex-row sm:flex-wrap">
               {submitIdeaButton}
               {myIdeasLink}
             </div>
-            <div className="flex flex-wrap gap-xs">
+            <div className="flex flex-col items-stretch gap-xs sm:flex-row sm:flex-wrap">
               {askQuestionButton}
               {myQuestionsLink}
             </div>
           </div>
         )}
         {role === "admin" && (
-          <div className="flex flex-wrap items-center justify-between gap-xs mb-lg">
+          <div className="flex flex-col items-stretch gap-xs mb-lg sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             {submitIdeaButton}
             {myIdeasLink}
             {askQuestionButton}
@@ -414,7 +414,7 @@ function ManagerSpace() {
           </div>
         )}
         {role === "manager" && (
-          <div className="flex flex-wrap items-center justify-between gap-xs mb-lg">
+          <div className="flex flex-col items-stretch gap-xs mb-lg sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             {submitIdeaButton}
             {myIdeasLink}
             {askQuestionButton}
