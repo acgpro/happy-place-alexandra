@@ -362,7 +362,7 @@ function ManagerSpace() {
               variant="outline"
               disabled={exportReport.isPending}
               onClick={() => exportReport.mutate()}
-              className="h-auto rounded-none border-outline bg-surface px-md py-xs font-label-md text-label-md text-primary shadow-none hover:bg-surface-container"
+              className="h-auto rounded-none border-outline bg-surface px-md py-xs font-label-md text-label-md text-primary shadow-none hover:bg-surface-container justify-start sm:justify-center"
             >
               <Icon name="file_download" /> {exportReport.isPending ? "EXPORT EN COURS…" : "EXPORTER LE RAPPORT"}
             </Button>
