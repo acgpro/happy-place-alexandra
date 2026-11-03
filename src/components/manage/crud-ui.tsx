@@ -283,7 +283,7 @@ export function ConfirmDelete({
           type="button"
           onClick={onConfirm}
           disabled={pending}
-          className="px-lg py-xs bg-error text-on-error font-label-md text-label-md disabled:opacity-50"
+          className="px-lg py-xs bg-error text-on-primary font-label-md text-label-md disabled:opacity-50"
         >
           {pending ? "SUPPRESSION…" : "SUPPRIMER"}
         </button>
