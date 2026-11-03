@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ErrorSummary, Field, FormActions, Modal, Select, TextArea, TextInput, useFieldProps } from "@/components/manage/crud-ui";
 import { submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
@@ -17,6 +17,7 @@ import { NewsReader } from "@/components/news-reader";
 import { DepartureNotices } from "@/components/departure-notices";
 import { CountBadge } from "@/components/count-badge";
 import { useAdminPendingCounts } from "@/lib/admin-pending";
+import { answeredIdeaIds, readSeenIdeas } from "@/lib/idees-lues";
 import { NewsImage, NewsLinks, NewsMediaEditor } from "@/components/news-media";
 import { emptyMedia, linkErrors, mediaFromNews, toNewsLinks, type MediaDraft } from "@/lib/news-media";
 import { BlockerArchive, ValidatedSubmissions } from "@/components/dashboard-extras";
@@ -27,6 +28,8 @@ import {
   deltaText,
   fetchNews,
   fetchMyFullName,
+  fetchMySubmissions,
+  fetchResponses,
   exportMyRecentSubmissions,
   type News,
   type Submission,
@@ -255,6 +258,29 @@ function ManagerSpace() {
   const adminCounts = useAdminPendingCounts(myEmail, isAdmin && !!myEmail);
   const adminNews = adminCounts.news;
   const adminPending = adminCounts.total;
+  // Badge « MES IDÉES » : mêmes requêtes et mêmes clés de cache que la page « Mes idées ».
+  const myIdeas = useQuery({
+    queryKey: ["submissions", "mine", email],
+    queryFn: () => fetchMySubmissions(email ?? ""),
+    enabled: !!email,
+    retry: false,
+  });
+  const myIdeaIds = myIdeas.data?.map((s) => s.id) ?? [];
+  const myIdeaResponses = useQuery({
+    queryKey: ["responses", myIdeaIds],
+    queryFn: () => fetchResponses(myIdeaIds),
+    enabled: myIdeaIds.length > 0,
+    retry: false,
+  });
+  // Lu dans un effet à chaque montage : après l'enregistrement fait par « Mes idées » en quittant la page.
+  const [seenIdeas, setSeenIdeas] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    setSeenIdeas(readSeenIdeas(user.id));
+  }, [user.id]);
+  const unreadIdeas =
+    seenIdeas && myIdeas.data
+      ? answeredIdeaIds(myIdeas.data, myIdeaResponses.data).filter((id) => !seenIdeas.has(id)).length
+      : 0;
 
   function sendSubmission(e: React.FormEvent) {
     e.preventDefault();
@@ -287,8 +313,13 @@ function ManagerSpace() {
     </button>
   );
   const myIdeasLink = (
-    <Link to="/idees" className={secondaryButton}>
+    <Link
+      to="/idees"
+      aria-label={unreadIdeas > 0 ? `Mes idées, ${unreadIdeas} ${unreadIdeas > 1 ? "réponses non lues" : "réponse non lue"}` : undefined}
+      className={secondaryButton}
+    >
       <Icon name="lightbulb" /> MES IDÉES
+      <CountBadge count={unreadIdeas} />
     </Link>
   );
   const askQuestionButton = (

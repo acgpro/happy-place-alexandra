@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AttachmentLink } from "@/components/attachment-link";
 import { BrandHeader } from "@/components/brand-header";
 import { SubmissionPreview } from "@/components/expandable-card";
@@ -8,6 +8,7 @@ import { Linkify } from "@/components/linkify";
 import { ResponseBlock } from "@/components/submission-response";
 import { SubmissionReader } from "@/components/submission-reader";
 import { fetchMySubmissions, fetchResponses, timeAgo, type Submission } from "@/lib/dashboard";
+import { answeredIdeaIds, markIdeasSeen, readSeenIdeas } from "@/lib/idees-lues";
 
 export const Route = createFileRoute("/_authenticated/idees")({
   head: () => ({
@@ -20,8 +21,10 @@ export const Route = createFileRoute("/_authenticated/idees")({
 });
 
 function MyIdeas() {
-  const { email } = Route.useRouteContext();
+  const { email, user } = Route.useRouteContext();
   const [reading, setReading] = useState<Submission | null>(null);
+  // Idées déjà vues, lues une seule fois à l'ouverture : les pastilles restent stables pendant la visite.
+  const [seenAtOpening] = useState(() => readSeenIdeas(user.id));
 
   const mine = useQuery({
     queryKey: ["submissions", "mine", email],
@@ -35,6 +38,13 @@ function MyIdeas() {
     enabled: myIds.length > 0,
     retry: false,
   });
+  const answeredIds = mine.data ? answeredIdeaIds(mine.data, myResponses.data) : [];
+  // Réponses affichées : enregistrées comme vues au démontage de la page, jamais avant l'affichage.
+  const displayedAnswers = useRef<string[]>([]);
+  useEffect(() => {
+    displayedAnswers.current = answeredIds;
+  });
+  useEffect(() => () => markIdeasSeen(user.id, displayedAnswers.current), [user.id]);
 
   return (
     <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
@@ -77,6 +87,11 @@ function MyIdeas() {
                   <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
                   <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
                   <p className="text-[11px] font-label-sm text-on-surface-variant uppercase mt-xs">
+                    {answeredIds.includes(s.id) && !seenAtOpening.has(s.id) && (
+                      <span className="bg-tertiary-fixed text-on-tertiary-fixed px-xs font-label-sm text-label-sm normal-case mr-xs">
+                        Nouveau
+                      </span>
+                    )}
                     {s.status} • {s.team} • {timeAgo(s.created_at)}
                   </p>
                   {s.status === "en attente" && (
