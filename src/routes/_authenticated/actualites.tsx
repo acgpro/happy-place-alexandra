@@ -16,6 +16,7 @@ import {
 import { BrandHeader } from "@/components/brand-header";
 import { newsSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
+  db,
   createNews,
   deleteNews,
   fetchAllNews,
@@ -66,9 +67,14 @@ const viewEmpty: Record<NewsView, string> = {
   "publiees-manager": "Aucune actualité de manager publiée.",
 };
 
+/** Actualité de l'admin connecté ou ancienne ligne sans auteur identifié (relève de l'administration). */
+function isMine(n: News, myEmail: string): boolean {
+  return !n.author_email || n.author_email.toLowerCase() === myEmail;
+}
+
 /** Filtre une liste d'actualités selon la vue. Une actualité sans author_email (anciennes lignes) relève de l'administration : elle compte comme « à moi ». */
 function filterNews(all: News[], vue: NewsView, myEmail: string): News[] {
-  const mine = (n: News) => !n.author_email || n.author_email.toLowerCase() === myEmail;
+  const mine = (n: News) => isMine(n, myEmail);
   switch (vue) {
     case "mes":
       return all.filter(mine);
@@ -117,7 +123,16 @@ const newsStatusLabels: Record<string, string> = {
   publiée: "Publiée",
 };
 
-const empty: NewsInput = { title: "", body: "", author: "Direction Recrutement", status: "brouillon" };
+const empty: NewsInput = { title: "", body: "", author: "", status: "brouillon" };
+/** Direction proposée par défaut à l'admin (RH, communication interne), si elle existe dans `teams`. */
+const DEFAULT_AUTHOR = "Direction RH - Communication Interne";
+
+/** Directions existantes (table `teams`, lisible par les comptes connectés). */
+async function fetchTeamNames(): Promise<string[]> {
+  const { data, error } = await db.from("teams").select("name").order("name");
+  if (error) throw error;
+  return (data ?? []).map((t) => t.name);
+}
 
 function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
   const qc = useQueryClient();
@@ -129,6 +144,10 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
   const [showLinkErrs, setShowLinkErrs] = useState(false);
 
   const list = useQuery({ queryKey: ["news", "all"], queryFn: fetchAllNews, retry: false });
+  const teams = useQuery({ queryKey: ["teams", "names"], queryFn: fetchTeamNames, retry: false });
+  const teamNames = teams.data ?? [];
+  // Une actualité ou un brouillon d'un autre compte (manager) garde sa direction émettrice.
+  const authorLocked = !!editing && !isMine(editing, myEmail);
   const shown = filterNews(list.data ?? [], vue, myEmail);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["news"] });
   const onError = (e: unknown) => toast.error((e as Error).message);
@@ -186,7 +205,7 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
             setErrors({});
             setMedia(emptyMedia());
             setShowLinkErrs(false);
-            setForm({ ...empty });
+            setForm({ ...empty, author: teamNames.includes(DEFAULT_AUTHOR) ? DEFAULT_AUTHOR : "" });
           }}
           className="px-md py-xs bg-primary text-on-primary font-label-md text-label-md"
         >
@@ -295,11 +314,26 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
               />
             </Field>
             <Field label="Auteur" error={errors.author}>
-              <TextInput
+              <Select
                 value={form.author}
-                maxLength={80}
+                disabled={authorLocked}
                 onChange={(e) => setForm({ ...form, author: e.target.value })}
-              />
+              >
+                <option value="">Choisir une direction</option>
+                {form.author && !teamNames.includes(form.author) && (
+                  <option value={form.author}>{form.author}</option>
+                )}
+                {teamNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+              {authorLocked && (
+                <p className="text-body-sm text-on-surface-variant mt-xs">
+                  Direction émettrice : non modifiable.
+                </p>
+              )}
             </Field>
             <Field label="Statut" error={errors.status}>
               <Select
