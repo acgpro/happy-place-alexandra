@@ -38,14 +38,55 @@ export const Route = createFileRoute("/_authenticated/actualites")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // vue optionnelle : les liens existants vers /actualites (sans paramètre) restent valides.
+  validateSearch: (search: Record<string, unknown>): { vue?: NewsView } =>
+    NEWS_VIEWS.includes(search.vue as NewsView) ? { vue: search.vue as NewsView } : {},
   beforeLoad: ({ context }) => {
     if (context.role !== "admin") throw redirect({ to: "/" });
   },
   component: NewsPage,
 });
 
-/** Page autonome « Gérer les actualités » (admin), sur le modèle de « Gestion des données », sans onglets. */
+/** Vues du menu : mes = toutes mes actualités ; le reste filtre par statut et par auteur. */
+const NEWS_VIEWS = ["mes", "brouillons-mes", "brouillons-valider", "publiees-mes", "publiees-manager"] as const;
+type NewsView = (typeof NEWS_VIEWS)[number];
+
+const viewTitles: Record<NewsView, string> = {
+  mes: "Mes actualités",
+  "brouillons-mes": "Mes brouillons",
+  "brouillons-valider": "Brouillons à valider",
+  "publiees-mes": "Mes actualités publiées",
+  "publiees-manager": "Actualités manager",
+};
+const viewEmpty: Record<NewsView, string> = {
+  mes: "Aucune actualité.",
+  "brouillons-mes": "Aucun brouillon.",
+  "brouillons-valider": "Aucun brouillon à valider.",
+  "publiees-mes": "Aucune actualité publiée.",
+  "publiees-manager": "Aucune actualité de manager publiée.",
+};
+
+/** Filtre une liste d'actualités selon la vue. Une actualité sans author_email (anciennes lignes) relève de l'administration : elle compte comme « à moi ». */
+function filterNews(all: News[], vue: NewsView, myEmail: string): News[] {
+  const mine = (n: News) => !n.author_email || n.author_email.toLowerCase() === myEmail;
+  switch (vue) {
+    case "mes":
+      return all.filter(mine);
+    case "brouillons-mes":
+      return all.filter((n) => n.status === "brouillon" && mine(n));
+    case "brouillons-valider":
+      return all.filter((n) => n.status === "brouillon" && !mine(n));
+    case "publiees-mes":
+      return all.filter((n) => n.status === "publiée" && mine(n));
+    case "publiees-manager":
+      return all.filter((n) => n.status === "publiée" && !mine(n));
+  }
+}
+
+/** Page autonome « Gérer les actualités » (admin), sur le modèle de « Gestion des données », avec un menu à sous-menus (paramètre ?vue=). */
 function NewsPage() {
+  const vue: NewsView = Route.useSearch().vue ?? "mes";
+  const { email } = Route.useRouteContext();
   return (
     <div className="bg-background text-on-surface font-body-md min-h-screen">
       <BrandHeader />
@@ -65,7 +106,7 @@ function NewsPage() {
           </Link>
         </div>
 
-        <ManageNews />
+        <ManageNews vue={vue} myEmail={(email ?? "").toLowerCase()} />
       </main>
     </div>
   );
@@ -78,7 +119,7 @@ const newsStatusLabels: Record<string, string> = {
 
 const empty: NewsInput = { title: "", body: "", author: "Direction Recrutement", status: "brouillon" };
 
-function ManageNews() {
+function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
   const qc = useQueryClient();
   const [form, setForm] = useState<NewsInput | null>(null);
   const [editing, setEditing] = useState<News | null>(null);
@@ -88,6 +129,7 @@ function ManageNews() {
   const [showLinkErrs, setShowLinkErrs] = useState(false);
 
   const list = useQuery({ queryKey: ["news", "all"], queryFn: fetchAllNews, retry: false });
+  const shown = filterNews(list.data ?? [], vue, myEmail);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["news"] });
   const onError = (e: unknown) => toast.error((e as Error).message);
 
@@ -136,11 +178,41 @@ function ManageNews() {
 
   return (
     <section className="space-y-md">
+      <nav aria-label="Actualités" className="flex flex-wrap gap-xs border-b border-outline-variant pb-sm">
+        <MenuLink to="mes" current={vue} label="MES ACTUALITÉS" />
+        <MenuLink
+          to="brouillons-mes"
+          current={vue}
+          label="BROUILLONS"
+          active={vue.startsWith("brouillons")}
+        />
+        <MenuLink
+          to="publiees-mes"
+          current={vue}
+          label="ACTUALITÉS PUBLIÉES"
+          active={vue.startsWith("publiees")}
+        />
+      </nav>
+
+      {vue.startsWith("brouillons") && (
+        <SubMenu label="Brouillons">
+          <MenuLink to="brouillons-mes" current={vue} label="MES BROUILLONS" sub />
+          <MenuLink to="brouillons-valider" current={vue} label="BROUILLONS À VALIDER" sub />
+        </SubMenu>
+      )}
+      {vue.startsWith("publiees") && (
+        <SubMenu label="Actualités publiées">
+          <MenuLink to="publiees-mes" current={vue} label="MES ACTUALITÉS PUBLIÉES" sub />
+          <MenuLink to="publiees-manager" current={vue} label="ACTUALITÉS MANAGER" sub />
+        </SubMenu>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="font-headline-sm text-headline-sm text-primary">
-          Actualités ({list.data?.length ?? 0})
+          {viewTitles[vue]} ({shown.length})
         </h2>
         <button
+          type="button"
           onClick={() => {
             setEditing(null);
             setErrors({});
@@ -160,7 +232,7 @@ function ManageNews() {
       )}
 
       <div className="space-y-xs">
-        {list.data?.map((n) => (
+        {shown.map((n) => (
           <article
             key={n.id}
             className="flex flex-col sm:flex-row items-start justify-between gap-sm p-sm min-w-0 overflow-hidden bg-card border border-outline-variant"
@@ -191,8 +263,8 @@ function ManageNews() {
             />
           </article>
         ))}
-        {list.data?.length === 0 && (
-          <p className="text-body-sm italic text-on-surface-variant">Aucune actualité.</p>
+        {list.data && shown.length === 0 && (
+          <p className="text-body-sm italic text-on-surface-variant">{viewEmpty[vue]}</p>
         )}
       </div>
 
@@ -254,5 +326,44 @@ function ManageNews() {
         />
       )}
     </section>
+  );
+}
+
+/** Entrée de menu : lien vers /actualites?vue=... ; `active` marque l'entrée parente d'un sous-menu. */
+function MenuLink({
+  to,
+  current,
+  label,
+  active,
+  sub,
+}: {
+  to: NewsView;
+  current: NewsView;
+  label: string;
+  active?: boolean;
+  sub?: boolean;
+}) {
+  const on = active ?? current === to;
+  return (
+    <Link
+      to="/actualites"
+      search={{ vue: to }}
+      aria-current={on ? "page" : undefined}
+      className={`flex items-center gap-xs px-md py-xs border font-label-md text-label-md ${
+        on
+          ? "bg-primary text-on-primary border-primary"
+          : "text-on-surface-variant border-outline-variant hover:bg-surface-container"
+      } ${sub ? "text-label-sm" : ""}`}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function SubMenu({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <nav aria-label={`Sous-menu ${label}`} className="flex flex-wrap gap-xs pl-md border-l-2 border-primary">
+      {children}
+    </nav>
   );
 }
