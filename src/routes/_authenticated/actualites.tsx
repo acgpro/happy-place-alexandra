@@ -179,6 +179,19 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
   return (
     <section className="space-y-md">
       <nav aria-label="Actualités" className="flex flex-wrap gap-xs border-b border-outline-variant pb-sm">
+        <button
+          type="button"
+          onClick={() => {
+            setEditing(null);
+            setErrors({});
+            setMedia(emptyMedia());
+            setShowLinkErrs(false);
+            setForm({ ...empty });
+          }}
+          className="px-md py-xs bg-primary text-on-primary font-label-md text-label-md"
+        >
+          + NOUVELLE ACTUALITÉ
+        </button>
         <MenuLink to="mes" current={vue} label="MES ACTUALITÉS" />
         <MenuLink
           to="brouillons-mes"
@@ -207,24 +220,9 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
         </SubMenu>
       )}
 
-      <div className="flex items-center justify-between">
-        <h2 className="font-headline-sm text-headline-sm text-primary">
-          {viewTitles[vue]} ({shown.length})
-        </h2>
-        <button
-          type="button"
-          onClick={() => {
-            setEditing(null);
-            setErrors({});
-            setMedia(emptyMedia());
-            setShowLinkErrs(false);
-            setForm({ ...empty });
-          }}
-          className="px-md py-xs bg-primary text-on-primary font-label-md text-label-md"
-        >
-          + NOUVELLE ACTUALITÉ
-        </button>
-      </div>
+      <h2 className="font-headline-sm text-headline-sm text-primary">
+        {viewTitles[vue]} ({shown.length})
+      </h2>
 
       {list.isLoading && <p className="text-body-sm text-on-surface-variant">Chargement…</p>}
       {list.isError && (
