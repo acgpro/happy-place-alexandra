@@ -317,6 +317,11 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
               <Select
                 value={form.author}
                 disabled={authorLocked}
+                className={
+                  authorLocked
+                    ? "bg-surface-container-highest border-dashed border-outline cursor-default"
+                    : ""
+                }
                 onChange={(e) => setForm({ ...form, author: e.target.value })}
               >
                 <option value="">Choisir une direction</option>
