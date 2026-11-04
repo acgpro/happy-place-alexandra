@@ -129,7 +129,7 @@ function ChoisirRolePage() {
             </p>
             <h1 className="font-headline-lg text-headline-lg text-primary">Choisis ton rôle</h1>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Tu pourras en changer à tout moment pour tester l'app sous un autre angle.
+              Démo : choisis Gontran, Kesha ou Olivia.
             </p>
           </div>
 
