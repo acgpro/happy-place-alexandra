@@ -114,27 +114,23 @@ function MyQuestions() {
                 { vue: "traitees", label: "QUESTIONS TRAITÉES", name: "Questions traitées" },
               ]}
             />
-            {list.data.length === 0 && vue === "attente" ? (
-              <div className="border border-outline-variant bg-surface-container-lowest p-md text-center space-y-xs">
-                <p className="font-headline-md text-headline-md text-primary">Aucune question posée</p>
-                <p className="text-on-surface-variant">
-                  Pose une question à une direction depuis la vue d'ensemble : elle apparaîtra ici avec sa réponse.
-                </p>
-              </div>
-            ) : (
-              <MyViewBlock
-                title={BLOCKS[vue].title}
-                counter={`${shown.length} ${BLOCKS[vue].counter}`}
-                empty={BLOCKS[vue].empty}
-                isEmpty={shown.length === 0}
-              >
-                <ul className="space-y-sm">
-                  {shown.map((q) => (
-                    <QuestionCard key={q.id} q={q} onDelete={() => setToDelete(q)} />
-                  ))}
-                </ul>
-              </MyViewBlock>
-            )}
+            <MyViewBlock
+              title={BLOCKS[vue].title}
+              counter={`${shown.length} ${BLOCKS[vue].counter}`}
+              // Aucune soumission : l'invitation de la vue d'ensemble remplace le message court.
+              empty={
+                list.data.length === 0 && vue === "attente"
+                  ? "Aucune question posée. Pose une question à une direction depuis la vue d'ensemble : elle apparaîtra ici avec sa réponse."
+                  : BLOCKS[vue].empty
+              }
+              isEmpty={shown.length === 0}
+            >
+              <ul className="space-y-sm">
+                {shown.map((q) => (
+                  <QuestionCard key={q.id} q={q} onDelete={() => setToDelete(q)} />
+                ))}
+              </ul>
+            </MyViewBlock>
           </>
         )}
       </main>
