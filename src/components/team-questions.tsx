@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CharCounter, formatExactDate } from "@/components/expandable-card";
 import { Linkify } from "@/components/linkify";
+import { BlockCounter } from "@/components/count-badge";
 import { ErrorSummary, Field, FormActions, Modal, TextArea } from "@/components/manage/crud-ui";
 import { validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
@@ -111,11 +112,8 @@ export function TeamQuestions({
   const showTreated = !isAdmin && view === "traitees";
   const shown = showTreated ? treated : pending;
   const title = showTreated ? "Questions traitées" : "Questions en attente";
-  const counter = isAdmin
-    ? `${pending.length} SANS RÉPONSE`
-    : showTreated
-      ? `${treated.length} TRAITÉES`
-      : `${pending.length} EN ATTENTE`;
+  // « En attente » = sans réponse (statut « en attente ») pour l'admin comme pour le manager.
+  const counter = showTreated ? `${treated.length} TRAITÉES` : `${pending.length} EN ATTENTE`;
   const empty = isAdmin
     ? "Aucune question en attente"
     : showTreated
@@ -131,9 +129,7 @@ export function TeamQuestions({
         <h2 id="team-questions-title" className="font-headline-sm text-headline-sm text-primary">
           {title}
         </h2>
-        <span className="border border-outline px-xs py-1 font-label-sm text-label-sm uppercase text-primary" aria-live="polite">
-          {counter}
-        </span>
+        <BlockCounter>{counter}</BlockCounter>
       </div>
 
       {list.isLoading && <p className="text-on-surface-variant">Chargement…</p>}

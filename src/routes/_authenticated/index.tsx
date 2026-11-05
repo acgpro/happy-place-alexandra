@@ -14,7 +14,7 @@ import { TeamQuestions, useTeamQuestions } from "@/components/team-questions";
 import { PendingSubmissions, usePendingSubmissions } from "@/components/pending-submissions";
 import { NewsReader } from "@/components/news-reader";
 import { DepartureNotices } from "@/components/departure-notices";
-import { CountBadge } from "@/components/count-badge";
+import { BlockCounter, CountBadge } from "@/components/count-badge";
 import { useAdminPendingCounts } from "@/lib/admin-pending";
 import { answeredIdeaIds, readSeenIdeas } from "@/lib/idees-lues";
 import { NewsImage, NewsLinks, NewsMediaEditor } from "@/components/news-media";
@@ -435,9 +435,9 @@ function ManagerSpace() {
                 Actualités du cabinet
               </h2>
               {canWriteNews && (
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                <BlockCounter>
                   {drafts} brouillon{drafts > 1 ? "s" : ""} en attente
-                </span>
+                </BlockCounter>
               )}
             </div>
             {canWriteNews && <form

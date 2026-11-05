@@ -19,6 +19,7 @@ import {
   useFieldProps,
 } from "@/components/manage/crud-ui";
 import { SubmissionReader } from "@/components/submission-reader";
+import { BlockCounter } from "@/components/count-badge";
 import { rejectionSchema, responseSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
   fetchMyManagedTeams,
@@ -214,9 +215,7 @@ export function PendingSubmissions({
     >
       <div className="flex items-center justify-between border-b border-outline-variant pb-sm mb-md">
         <h2 className="font-headline-sm text-headline-sm text-primary">Idées en attente</h2>
-        <div className="bg-tertiary-fixed text-on-tertiary-fixed px-xs py-1 rounded-full font-label-sm text-label-sm">
-          {pendingForMe.length} NOUVELLES
-        </div>
+        <BlockCounter>{pendingForMe.length} EN ATTENTE</BlockCounter>
       </div>
       <div className="space-y-sm flex-grow min-w-0">
         {submissions.isError && (
@@ -448,9 +447,7 @@ export function TreatedSubmissions({ email }: { email: string }) {
     <section className="min-w-0 bg-surface-container-lowest border border-outline-variant p-md flex flex-col">
       <div className="flex items-center justify-between border-b border-outline-variant pb-sm mb-md">
         <h2 className="font-headline-sm text-headline-sm text-primary">Idées traitées</h2>
-        <span className="border border-outline px-xs py-1 font-label-sm text-label-sm uppercase text-primary">
-          {shown.length} TRAITÉES
-        </span>
+        <BlockCounter>{shown.length} TRAITÉES</BlockCounter>
       </div>
       <div className="space-y-sm min-w-0">
         {(teams.isLoading || treated.isLoading) && (
