@@ -58,6 +58,11 @@ function inView(b: Blocker, vue: BlockerView): boolean {
   return b.status === viewStatus[vue];
 }
 
+/** Vue qui affiche un statut donné (après création, on ouvre la vue du nouveau point). */
+function viewOf(status: Blocker["status"]): BlockerView {
+  return BLOCKER_VIEWS.find((v) => viewStatus[v] === status) ?? "ouverts";
+}
+
 const viewTitles: Record<BlockerView, string> = {
   ouverts: "Points bloquants ouverts",
   "en-cours": "Points bloquants en cours",
@@ -87,6 +92,7 @@ function ManageBlockers() {
   const [toDelete, setToDelete] = useState<Blocker | null>(null);
 
   const vue: BlockerView = Route.useSearch().vue ?? "ouverts";
+  const navigate = Route.useNavigate();
   const list = useQuery({ queryKey: ["blockers", "all"], queryFn: fetchAllBlockers, retry: false });
   // Même requête qu'avant, filtrée côté client selon la vue.
   const shown = (list.data ?? []).filter((b) => inView(b, vue));
@@ -98,10 +104,13 @@ function ManageBlockers() {
   const save = useMutation({
     mutationFn: (input: BlockerInput) =>
       editing ? updateBlocker(editing.id, input) : createBlocker(input),
-    onSuccess: () => {
-      toast.success(editing ? "Point bloquant modifié" : "Point bloquant créé");
+    onSuccess: (_data, input) => {
+      const created = !editing;
+      toast.success(created ? "Point bloquant créé" : "Point bloquant modifié");
       close();
       invalidate();
+      // Création : afficher la vue du statut choisi, où le nouveau point apparaît.
+      if (created) navigate({ search: { vue: viewOf(input.status as Blocker["status"]) } });
     },
     onError,
   });
@@ -137,16 +146,8 @@ function ManageBlockers() {
   return (
     <section className="space-y-md">
       <MenuBar label="Points bloquants">
-        <BlockerMenuLink to="ouverts" current={vue} label="OUVERTS" name="Ouverts" count={openCount} />
-        <BlockerMenuLink to="en-cours" current={vue} label="EN COURS" />
-        <BlockerMenuLink to="surveillance" current={vue} label="SURVEILLANCE" />
-        <BlockerMenuLink to="resolus" current={vue} label="RÉSOLUS" />
-      </MenuBar>
-      <div className="flex items-center justify-between">
-        <h2 className="font-headline-sm text-headline-sm text-primary">
-          {viewTitles[vue]} ({shown.length})
-        </h2>
         <button
+          type="button"
           onClick={() => {
             setEditing(null);
             setErrors({});
@@ -156,7 +157,14 @@ function ManageBlockers() {
         >
           + NOUVEAU POINT BLOQUANT
         </button>
-      </div>
+        <BlockerMenuLink to="ouverts" current={vue} label="OUVERTS" name="Ouverts" count={openCount} />
+        <BlockerMenuLink to="en-cours" current={vue} label="EN COURS" />
+        <BlockerMenuLink to="surveillance" current={vue} label="SURVEILLANCE" />
+        <BlockerMenuLink to="resolus" current={vue} label="RÉSOLUS" />
+      </MenuBar>
+      <h2 className="font-headline-sm text-headline-sm text-primary">
+        {viewTitles[vue]} ({shown.length})
+      </h2>
 
       {list.isLoading && <p className="text-body-sm text-on-surface-variant">Chargement…</p>}
       {list.isError && (
