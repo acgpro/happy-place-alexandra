@@ -247,7 +247,7 @@ function ManagerSpace() {
   // Badges de l'accueil manager : mêmes requêtes (lecture seule) et mêmes filtres que les pages dédiées.
   const pendingIdeas = usePendingSubmissions(myEmail, role === "manager" && !!myEmail).pending.length;
   const pendingQuestions = useTeamQuestions(email ?? "", role === "manager" && !!email).pending.length;
-  // Badges admin : « GÉRER LES ACTUALITÉS » = mes brouillons + brouillons à valider ; « GÉRER LES DONNÉES » = idées à valider + points bloquants OUVERT
+  // Badges admin : « GÉRER LES ACTUALITÉS » = mes brouillons + brouillons à valider ; « GÉRER LES DONNÉES » = idées en attente + points bloquants OUVERT, EN COURS, SURVEILLANCE
   const adminCounts = useAdminPendingCounts(myEmail, isAdmin && !!myEmail);
   const adminNews = adminCounts.news;
   const adminPending = adminCounts.total;

@@ -16,6 +16,7 @@ import {
 import { CountBadge } from "@/components/count-badge";
 import { ManageAction } from "@/components/manage/action-slot";
 import { MenuBar, menuTabClass, menuTabLabel } from "@/components/sub-menu";
+import { blockerCounts } from "@/lib/admin-pending";
 import { blockerSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
   createBlocker,
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/manage/blockers")({
   component: ManageBlockers,
 });
 
-/** Une vue par statut ; seul OUVERT est « à traiter » (badge). */
+/** Une vue par statut ; badge sur Ouverts, En cours et Surveillance (pas sur Résolus). */
 const BLOCKER_VIEWS = ["ouverts", "en-cours", "surveillance", "resolus"] as const;
 type BlockerView = (typeof BLOCKER_VIEWS)[number];
 
@@ -97,8 +98,8 @@ function ManageBlockers() {
   const list = useQuery({ queryKey: ["blockers", "all"], queryFn: fetchAllBlockers, retry: false });
   // Même requête qu'avant, filtrée côté client selon la vue.
   const shown = (list.data ?? []).filter((b) => inView(b, vue));
-  // Même règle que le badge de l'onglet « POINTS BLOQUANTS » : statut OUVERT uniquement.
-  const openCount = (list.data ?? []).filter((b) => inView(b, "ouverts")).length;
+  // Même fonction de comptage que le badge de l'onglet « POINTS BLOQUANTS » (somme des trois statuts).
+  const counts = blockerCounts(list.data);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["blockers"] });
   const onError = (e: unknown) => toast.error((e as Error).message);
 
@@ -161,9 +162,15 @@ function ManageBlockers() {
         </button>
       </ManageAction>
       <MenuBar label="Points bloquants">
-        <BlockerMenuLink to="ouverts" current={vue} label="OUVERTS" name="Ouverts" count={openCount} />
-        <BlockerMenuLink to="en-cours" current={vue} label="EN COURS" />
-        <BlockerMenuLink to="surveillance" current={vue} label="SURVEILLANCE" />
+        <BlockerMenuLink to="ouverts" current={vue} label="OUVERTS" name="Ouverts" count={counts.ouverts} />
+        <BlockerMenuLink to="en-cours" current={vue} label="EN COURS" name="En cours" count={counts.enCours} />
+        <BlockerMenuLink
+          to="surveillance"
+          current={vue}
+          label="SURVEILLANCE"
+          name="Surveillance"
+          count={counts.surveillance}
+        />
         <BlockerMenuLink to="resolus" current={vue} label="RÉSOLUS" />
       </MenuBar>
       <h2 className="font-headline-sm text-headline-sm text-primary">
