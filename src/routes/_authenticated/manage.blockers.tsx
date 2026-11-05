@@ -43,19 +43,25 @@ export const Route = createFileRoute("/_authenticated/manage/blockers")({
   component: ManageBlockers,
 });
 
-/** Vues du menu : ouverts = OUVERT (à traiter) ; en-cours = EN COURS ou SURVEILLANCE ; resolus = RÉSOLU. */
-const BLOCKER_VIEWS = ["ouverts", "en-cours", "resolus"] as const;
+/** Une vue par statut ; seul OUVERT est « à traiter » (badge). */
+const BLOCKER_VIEWS = ["ouverts", "en-cours", "surveillance", "resolus"] as const;
 type BlockerView = (typeof BLOCKER_VIEWS)[number];
 
+const viewStatus: Record<BlockerView, Blocker["status"]> = {
+  ouverts: "OUVERT",
+  "en-cours": "EN COURS",
+  surveillance: "SURVEILLANCE",
+  resolus: "RÉSOLU",
+};
+
 function inView(b: Blocker, vue: BlockerView): boolean {
-  if (vue === "ouverts") return b.status === "OUVERT";
-  if (vue === "resolus") return b.status === "RÉSOLU";
-  return b.status === "EN COURS" || b.status === "SURVEILLANCE";
+  return b.status === viewStatus[vue];
 }
 
 const viewTitles: Record<BlockerView, string> = {
   ouverts: "Points bloquants ouverts",
   "en-cours": "Points bloquants en cours",
+  surveillance: "Points bloquants en surveillance",
   resolus: "Points bloquants résolus",
 };
 
@@ -133,6 +139,7 @@ function ManageBlockers() {
       <MenuBar label="Points bloquants">
         <BlockerMenuLink to="ouverts" current={vue} label="OUVERTS" name="Ouverts" count={openCount} />
         <BlockerMenuLink to="en-cours" current={vue} label="EN COURS" />
+        <BlockerMenuLink to="surveillance" current={vue} label="SURVEILLANCE" />
         <BlockerMenuLink to="resolus" current={vue} label="RÉSOLUS" />
       </MenuBar>
       <div className="flex items-center justify-between">
