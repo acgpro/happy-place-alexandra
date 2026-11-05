@@ -85,6 +85,53 @@ export function usePendingSubmissions(email: string, enabled = true) {
   return { submissions, pending: pendingFor(submissions.data, myEmail) };
 }
 
+/** Rôle des auteurs des idées listées (admin) : même requête et même clé de cache que le bloc. */
+function useAuthorRoles(list: Submission[] | undefined, enabled: boolean) {
+  const authorEmails = [
+    ...new Set((list ?? []).map((s) => (s.submitted_by_email ?? "").toLowerCase()).filter(Boolean)),
+  ].sort();
+  return useQuery({
+    queryKey: ["allowed_users", "roles", authorEmails],
+    enabled: enabled && authorEmails.length > 0,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("allowed_users")
+        .select("email, allowed_user_roles(role)")
+        .in("email", authorEmails);
+      if (error) throw error;
+      return new Map(
+        (data ?? []).map((u) => [
+          u.email.toLowerCase(),
+          u.allowed_user_roles?.role ?? "collaborateur",
+        ]),
+      );
+    },
+  });
+}
+
+/** Boutons VALIDER / REFUSER : personne ne traite sa propre idée ; l'admin traite celles des managers et des admins. */
+function canReview(
+  s: Submission,
+  myEmail: string,
+  isAdmin: boolean,
+  roles: Map<string, string> | undefined,
+) {
+  const author = (s.submitted_by_email ?? "").toLowerCase();
+  if (!author || author === myEmail) return false;
+  if (!isAdmin) return true;
+  const authorRole = roles?.get(author);
+  return authorRole === "manager" || authorRole === "admin";
+}
+
+/** Idées en attente que l'admin peut réellement traiter (même règle que les boutons VALIDER / REFUSER). */
+export function useAdminActionableIdeas(email: string, enabled = true) {
+  const myEmail = email.toLowerCase();
+  const { submissions, pending } = usePendingSubmissions(email, enabled);
+  const roles = useAuthorRoles(submissions.data, enabled);
+  return pending.filter((s) => canReview(s, myEmail, true, roles.data));
+}
+
 /**
  * Bloc « Idées en attente » : accueil admin, page « Idées collaborateur » du manager.
  * Refus (motif + raison), validation (réponse, visibilité, brouillon IA) et lecture.
@@ -141,39 +188,8 @@ export function PendingSubmissions({
   }
 
   // Admin : rôle des auteurs affichés, pour ne proposer que les idées de managers et d'admins.
-  const authorEmails = [
-    ...new Set(
-      (submissions.data ?? [])
-        .map((s) => (s.submitted_by_email ?? "").toLowerCase())
-        .filter(Boolean),
-    ),
-  ].sort();
-  const authorRoles = useQuery({
-    queryKey: ["allowed_users", "roles", authorEmails],
-    enabled: isAdmin && authorEmails.length > 0,
-    retry: false,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("allowed_users")
-        .select("email, allowed_user_roles(role)")
-        .in("email", authorEmails);
-      if (error) throw error;
-      return new Map(
-        (data ?? []).map((u) => [
-          u.email.toLowerCase(),
-          u.allowed_user_roles?.role ?? "collaborateur",
-        ]),
-      );
-    },
-  });
-  /** Boutons VALIDER / REFUSER : personne ne traite sa propre idée ; l'admin traite celles des managers et des admins. */
-  function canActOn(s: Submission) {
-    const author = (s.submitted_by_email ?? "").toLowerCase();
-    if (!author || author === myEmail) return false;
-    if (!isAdmin) return true;
-    const authorRole = authorRoles.data?.get(author);
-    return authorRole === "manager" || authorRole === "admin";
-  }
+  const authorRoles = useAuthorRoles(submissions.data, isAdmin);
+  const canActOn = (s: Submission) => canReview(s, myEmail, isAdmin, authorRoles.data);
 
   const review = useMutation({
     mutationFn: reviewSubmission,

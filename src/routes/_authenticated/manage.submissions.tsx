@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +17,9 @@ import { CharCounter, rejectionErrorMessage } from "@/components/expandable-card
 import { Linkify } from "@/components/linkify";
 import { SubmissionReader } from "@/components/submission-reader";
 import { SubmissionHistory } from "@/components/manage/submission-history";
+import { CountBadge } from "@/components/count-badge";
+import { useAdminActionableIdeas } from "@/components/pending-submissions";
+import { MenuBar, menuTabClass, menuTabLabel } from "@/components/sub-menu";
 import { submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
   createSubmission,
@@ -39,8 +42,15 @@ export const Route = createFileRoute("/_authenticated/manage/submissions")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // vue optionnelle : les liens existants vers /manage/submissions (sans paramètre) restent valides.
+  validateSearch: (search: Record<string, unknown>): { vue?: IdeaView } =>
+    IDEA_VIEWS.includes(search.vue as IdeaView) ? { vue: search.vue as IdeaView } : {},
   component: ManageSubmissions,
 });
+
+/** Vues du menu : attente = statut « en attente » ; traitees = validées ou refusées. */
+const IDEA_VIEWS = ["attente", "traitees"] as const;
+type IdeaView = (typeof IDEA_VIEWS)[number];
 
 const submissionStatusLabels: Record<string, string> = {
   "en attente": "En attente",
@@ -54,6 +64,9 @@ const empty: SubmissionInput = { author_name: "", team: "Admin", content: "", st
 function ManageSubmissions() {
   const qc = useQueryClient();
   const { email } = Route.useRouteContext();
+  const vue: IdeaView = Route.useSearch().vue ?? "attente";
+  // Même compteur que le badge de l'onglet « IDÉES » : idées que l'admin peut traiter.
+  const actionable = useAdminActionableIdeas(email ?? "", !!email).length;
   const myName = useQuery({
     queryKey: ["allowed_users", "me", email],
     queryFn: () => fetchMyFullName(email ?? ""),
@@ -71,6 +84,10 @@ function ManageSubmissions() {
     queryFn: fetchAllSubmissions,
     retry: false,
   });
+  // Même requête qu'avant, filtrée côté client selon la vue.
+  const shown = (list.data ?? []).filter((s) =>
+    vue === "attente" ? s.status === "en attente" : s.status !== "en attente",
+  );
   const [reading, setReading] = useState<Submission | null>(null);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["submissions"] });
   const onError = (e: unknown) => toast.error((e as Error).message);
@@ -115,9 +132,19 @@ function ManageSubmissions() {
 
   return (
     <section className="space-y-md">
+      <MenuBar label="Idées">
+        <IdeaMenuLink
+          to="attente"
+          current={vue}
+          label="IDÉES EN ATTENTE"
+          name="Idées en attente"
+          count={actionable}
+        />
+        <IdeaMenuLink to="traitees" current={vue} label="IDÉES TRAITÉES" />
+      </MenuBar>
       <div className="flex items-center justify-between">
         <h2 className="font-headline-sm text-headline-sm text-primary">
-          Idées ({list.data?.length ?? 0})
+          {vue === "attente" ? "Idées en attente" : "Idées traitées"} ({shown.length})
         </h2>
         <button
           onClick={() => {
@@ -136,7 +163,7 @@ function ManageSubmissions() {
       )}
 
       <div className="space-y-xs">
-        {list.data?.map((s) => (
+        {shown.map((s) => (
           <article
             key={s.id}
             className="flex min-w-0 overflow-hidden items-start justify-between gap-sm p-sm bg-card border border-outline-variant"
@@ -168,8 +195,10 @@ function ManageSubmissions() {
             <RowActions onDelete={() => setToDelete(s)} />
           </article>
         ))}
-        {list.data?.length === 0 && (
-          <p className="text-body-sm italic text-on-surface-variant">Aucune idée.</p>
+        {list.data && shown.length === 0 && (
+          <p className="text-body-sm italic text-on-surface-variant">
+            {vue === "attente" ? "Aucune idée en attente." : "Aucune idée traitée."}
+          </p>
         )}
       </div>
 
@@ -214,5 +243,33 @@ function ManageSubmissions() {
         />
       )}
     </section>
+  );
+}
+
+function IdeaMenuLink({
+  to,
+  current,
+  label,
+  name,
+  count = 0,
+}: {
+  to: IdeaView;
+  current: IdeaView;
+  label: string;
+  name?: string;
+  count?: number;
+}) {
+  const on = current === to;
+  return (
+    <Link
+      to="/manage/submissions"
+      search={{ vue: to }}
+      aria-current={on ? "page" : undefined}
+      aria-label={name ? menuTabLabel(name, count) : undefined}
+      className={menuTabClass(on)}
+    >
+      {label}
+      <CountBadge count={count} />
+    </Link>
   );
 }
