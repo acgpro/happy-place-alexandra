@@ -5,8 +5,22 @@ import { toast } from "sonner";
 import { BrandHeader } from "@/components/brand-header";
 import { formatExactDate } from "@/components/expandable-card";
 import { Linkify } from "@/components/linkify";
+import { MyViewBlock, MyViewsMenu } from "@/components/my-views";
 import { ConfirmDelete } from "@/components/manage/crud-ui";
 import { deleteQuestion, fetchMyQuestions, questionErrorMessage, type Question } from "@/lib/questions";
+
+/** Vues : attente = sans réponse ; traitees = répondues. */
+const VIEWS = ["attente", "traitees"] as const;
+type View = (typeof VIEWS)[number];
+
+const BLOCKS: Record<View, { title: string; counter: string; empty: string }> = {
+  attente: {
+    title: "Questions en attente",
+    counter: "EN ATTENTE",
+    empty: "Aucune question en attente.",
+  },
+  traitees: { title: "Questions traitées", counter: "TRAITÉES", empty: "Aucune question traitée." },
+};
 
 export const Route = createFileRoute("/_authenticated/questions")({
   head: () => ({
@@ -15,6 +29,9 @@ export const Route = createFileRoute("/_authenticated/questions")({
       { name: "description", content: "Les questions que tu as posées aux directions et leurs réponses." },
     ],
   }),
+  // vue optionnelle : les liens existants vers /questions (sans paramètre) restent valides.
+  validateSearch: (search: Record<string, unknown>): { vue?: View } =>
+    VIEWS.includes(search.vue as View) ? { vue: search.vue as View } : {},
   component: MyQuestions,
 });
 
@@ -34,6 +51,7 @@ function Icon({ name }: { name: string }) {
 
 function MyQuestions() {
   const { email } = Route.useRouteContext();
+  const vue: View = Route.useSearch().vue ?? "attente";
   const qc = useQueryClient();
   const [toDelete, setToDelete] = useState<Question | null>(null);
 
@@ -42,6 +60,8 @@ function MyQuestions() {
     queryFn: () => fetchMyQuestions(email),
     retry: false,
   });
+
+  const shown = (list.data ?? []).filter((q) => (q.status === "répondue") === (vue === "traitees"));
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteQuestion(id),
@@ -91,11 +111,30 @@ function MyQuestions() {
           </div>
         )}
         {list.data && list.data.length > 0 && (
-          <ul className="space-y-sm">
-            {list.data.map((q) => (
-              <QuestionCard key={q.id} q={q} onDelete={() => setToDelete(q)} />
-            ))}
-          </ul>
+          <>
+            {/* Aucun suivi de lecture des réponses aux questions : pas de badge sur « traitées ». */}
+            <MyViewsMenu
+              to="/questions"
+              label="Mes questions"
+              current={vue}
+              tabs={[
+                { vue: "attente", label: "QUESTIONS EN ATTENTE", name: "Questions en attente" },
+                { vue: "traitees", label: "QUESTIONS TRAITÉES", name: "Questions traitées" },
+              ]}
+            />
+            <MyViewBlock
+              title={BLOCKS[vue].title}
+              counter={`${shown.length} ${BLOCKS[vue].counter}`}
+              empty={BLOCKS[vue].empty}
+              isEmpty={shown.length === 0}
+            >
+              <ul className="space-y-sm">
+                {shown.map((q) => (
+                  <QuestionCard key={q.id} q={q} onDelete={() => setToDelete(q)} />
+                ))}
+              </ul>
+            </MyViewBlock>
+          </>
         )}
       </main>
 
