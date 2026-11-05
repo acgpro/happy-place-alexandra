@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,8 @@ import {
   TextArea,
   TextInput,
 } from "@/components/manage/crud-ui";
+import { CountBadge } from "@/components/count-badge";
+import { MenuBar, menuTabClass, menuTabLabel } from "@/components/sub-menu";
 import { blockerSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
   createBlocker,
@@ -35,8 +37,27 @@ export const Route = createFileRoute("/_authenticated/manage/blockers")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // vue optionnelle : les liens existants vers /manage/blockers (sans paramètre) restent valides.
+  validateSearch: (search: Record<string, unknown>): { vue?: BlockerView } =>
+    BLOCKER_VIEWS.includes(search.vue as BlockerView) ? { vue: search.vue as BlockerView } : {},
   component: ManageBlockers,
 });
+
+/** Vues du menu : ouverts = OUVERT (à traiter) ; en-cours = EN COURS ou SURVEILLANCE ; resolus = RÉSOLU. */
+const BLOCKER_VIEWS = ["ouverts", "en-cours", "resolus"] as const;
+type BlockerView = (typeof BLOCKER_VIEWS)[number];
+
+function inView(b: Blocker, vue: BlockerView): boolean {
+  if (vue === "ouverts") return b.status === "OUVERT";
+  if (vue === "resolus") return b.status === "RÉSOLU";
+  return b.status === "EN COURS" || b.status === "SURVEILLANCE";
+}
+
+const viewTitles: Record<BlockerView, string> = {
+  ouverts: "Points bloquants ouverts",
+  "en-cours": "Points bloquants en cours",
+  resolus: "Points bloquants résolus",
+};
 
 const severityLabels: Record<string, string> = {
   critical: "Critique",
@@ -59,7 +80,12 @@ function ManageBlockers() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [toDelete, setToDelete] = useState<Blocker | null>(null);
 
+  const vue: BlockerView = Route.useSearch().vue ?? "ouverts";
   const list = useQuery({ queryKey: ["blockers", "all"], queryFn: fetchAllBlockers, retry: false });
+  // Même requête qu'avant, filtrée côté client selon la vue.
+  const shown = (list.data ?? []).filter((b) => inView(b, vue));
+  // Même règle que le badge de l'onglet « POINTS BLOQUANTS » : statut OUVERT uniquement.
+  const openCount = (list.data ?? []).filter((b) => inView(b, "ouverts")).length;
   const invalidate = () => qc.invalidateQueries({ queryKey: ["blockers"] });
   const onError = (e: unknown) => toast.error((e as Error).message);
 
@@ -104,9 +130,14 @@ function ManageBlockers() {
 
   return (
     <section className="space-y-md">
+      <MenuBar label="Points bloquants">
+        <BlockerMenuLink to="ouverts" current={vue} label="OUVERTS" name="Ouverts" count={openCount} />
+        <BlockerMenuLink to="en-cours" current={vue} label="EN COURS" />
+        <BlockerMenuLink to="resolus" current={vue} label="RÉSOLUS" />
+      </MenuBar>
       <div className="flex items-center justify-between">
         <h2 className="font-headline-sm text-headline-sm text-primary">
-          Points bloquants ({list.data?.length ?? 0})
+          {viewTitles[vue]} ({shown.length})
         </h2>
         <button
           onClick={() => {
@@ -126,7 +157,7 @@ function ManageBlockers() {
       )}
 
       <div className="space-y-xs">
-        {list.data?.map((b) => (
+        {shown.map((b) => (
           <article
             key={b.id}
             className="flex items-start justify-between gap-sm p-sm bg-card border border-outline-variant"
@@ -154,7 +185,7 @@ function ManageBlockers() {
             />
           </article>
         ))}
-        {list.data?.length === 0 && (
+        {list.data && shown.length === 0 && (
           <p className="text-body-sm italic text-on-surface-variant">Aucun point bloquant.</p>
         )}
       </div>
@@ -232,5 +263,33 @@ function ManageBlockers() {
         />
       )}
     </section>
+  );
+}
+
+function BlockerMenuLink({
+  to,
+  current,
+  label,
+  name,
+  count = 0,
+}: {
+  to: BlockerView;
+  current: BlockerView;
+  label: string;
+  name?: string;
+  count?: number;
+}) {
+  const on = current === to;
+  return (
+    <Link
+      to="/manage/blockers"
+      search={{ vue: to }}
+      aria-current={on ? "page" : undefined}
+      aria-label={name ? menuTabLabel(name, count) : undefined}
+      className={menuTabClass(on)}
+    >
+      {label}
+      <CountBadge count={count} />
+    </Link>
   );
 }
