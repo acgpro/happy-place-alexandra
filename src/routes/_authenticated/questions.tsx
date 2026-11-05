@@ -102,15 +102,7 @@ function MyQuestions() {
             Impossible de charger tes questions. Réessaie dans un instant.
           </p>
         )}
-        {list.data && list.data.length === 0 && (
-          <div className="border border-outline-variant bg-surface-container-lowest p-md text-center space-y-xs">
-            <p className="font-headline-md text-headline-md text-primary">Aucune question posée</p>
-            <p className="text-on-surface-variant">
-              Pose une question à une direction depuis la vue d'ensemble : elle apparaîtra ici avec sa réponse.
-            </p>
-          </div>
-        )}
-        {list.data && list.data.length > 0 && (
+        {list.data && (
           <>
             {/* Aucun suivi de lecture des réponses aux questions : pas de badge sur « traitées ». */}
             <MyViewsMenu

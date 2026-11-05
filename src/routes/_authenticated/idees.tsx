@@ -97,15 +97,7 @@ function MyIdeas() {
             Impossible de charger tes idées. Réessaie dans un instant.
           </p>
         )}
-        {mine.data && mine.data.length === 0 && (
-          <div className="border border-outline-variant bg-surface-container-lowest p-md text-center space-y-xs">
-            <p className="font-headline-md text-headline-md text-primary">Aucune idée soumise</p>
-            <p className="text-on-surface-variant">
-              Soumets une idée depuis la vue d'ensemble : elle apparaîtra ici avec la réponse du manager.
-            </p>
-          </div>
-        )}
-        {mine.data && mine.data.length > 0 && (
+        {mine.data && (
           <>
             <MyViewsMenu
               to="/idees"
