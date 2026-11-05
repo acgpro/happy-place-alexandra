@@ -1,6 +1,12 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { BrandHeader } from "@/components/brand-header";
-import { TeamQuestions } from "@/components/team-questions";
+import { CountBadge } from "@/components/count-badge";
+import { MenuBar, menuTabClass, menuTabLabel } from "@/components/sub-menu";
+import { TeamQuestions, useTeamQuestions } from "@/components/team-questions";
+
+/** Vues du menu : attente = questions sans réponse ; traitees = questions répondues (par ce manager, CA-F5-7). */
+const QUESTION_VIEWS = ["attente", "traitees"] as const;
+type QuestionView = (typeof QUESTION_VIEWS)[number];
 
 export const Route = createFileRoute("/_authenticated/questions-collaborateur")({
   head: () => ({
@@ -12,6 +18,9 @@ export const Route = createFileRoute("/_authenticated/questions-collaborateur")(
       },
     ],
   }),
+  // vue optionnelle : les liens existants vers /questions-collaborateur (sans paramètre) restent valides.
+  validateSearch: (search: Record<string, unknown>): { vue?: QuestionView } =>
+    QUESTION_VIEWS.includes(search.vue as QuestionView) ? { vue: search.vue as QuestionView } : {},
   // Page du manager ; l'admin consulte ces questions depuis son accueil.
   beforeLoad: ({ context }) => {
     if (context.role !== "manager") throw redirect({ to: "/" });
@@ -21,6 +30,9 @@ export const Route = createFileRoute("/_authenticated/questions-collaborateur")(
 
 function TeamQuestionsPage() {
   const { email } = Route.useRouteContext();
+  const vue: QuestionView = Route.useSearch().vue ?? "attente";
+  // Même requête et même filtre que le badge « QUESTIONS COLLABORATEUR » de l'accueil.
+  const pending = useTeamQuestions(email ?? "", !!email).pending.length;
   return (
     <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
       <BrandHeader />
@@ -41,8 +53,46 @@ function TeamQuestionsPage() {
             ← RETOUR À LA VUE D'ENSEMBLE
           </Link>
         </div>
-        {email && <TeamQuestions role="manager" email={email} />}
+        <MenuBar label="Questions collaborateur">
+          <QuestionMenuLink
+            to="attente"
+            current={vue}
+            label="QUESTIONS EN ATTENTE"
+            name="Questions en attente"
+            count={pending}
+          />
+          <QuestionMenuLink to="traitees" current={vue} label="QUESTIONS TRAITÉES" />
+        </MenuBar>
+        {email && <TeamQuestions role="manager" email={email} view={vue} />}
       </main>
     </div>
+  );
+}
+
+function QuestionMenuLink({
+  to,
+  current,
+  label,
+  name,
+  count = 0,
+}: {
+  to: QuestionView;
+  current: QuestionView;
+  label: string;
+  name?: string;
+  count?: number;
+}) {
+  const on = current === to;
+  return (
+    <Link
+      to="/questions-collaborateur"
+      search={{ vue: to }}
+      aria-current={on ? "page" : undefined}
+      aria-label={name ? menuTabLabel(name, count) : undefined}
+      className={menuTabClass(on)}
+    >
+      {label}
+      <CountBadge count={count} />
+    </Link>
   );
 }

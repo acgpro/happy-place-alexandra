@@ -50,10 +50,19 @@ export function useTeamQuestions(email: string, enabled = true) {
 }
 
 /**
- * F5 — accueil manager (« Questions collaborateur », écran 8) et accueil admin
+ * F5 — page manager « Questions collaborateur » (écran 8, vue en attente ou traitées) et accueil admin
  * (« Questions en attente », écran 10, lecture seule, sans bouton de réponse).
  */
-export function TeamQuestions({ role, email }: { role: "manager" | "admin"; email: string }) {
+export function TeamQuestions({
+  role,
+  email,
+  view = "attente",
+}: {
+  role: "manager" | "admin";
+  email: string;
+  /** Manager : « attente » = sans réponse ; « traitees » = répondues par ce manager (CA-F5-7). */
+  view?: "attente" | "traitees";
+}) {
   const isAdmin = role === "admin";
   const qc = useQueryClient();
   const [answering, setAnswering] = useState<Question | null>(null);
@@ -98,10 +107,20 @@ export function TeamQuestions({ role, email }: { role: "manager" | "admin"; emai
     answer.mutate({ id: answering.id, text: r.data.body });
   }
 
-  const shown = isAdmin ? pending : all;
-  const title = isAdmin ? "Questions en attente" : "Questions collaborateur";
-  const counter = isAdmin ? `${pending.length} SANS RÉPONSE` : `${pending.length} EN ATTENTE`;
-  const empty = isAdmin ? "Aucune question en attente" : "Aucune question en attente pour tes directions";
+  const treated = all.filter((q) => q.status === "répondue");
+  const showTreated = !isAdmin && view === "traitees";
+  const shown = showTreated ? treated : pending;
+  const title = showTreated ? "Questions traitées" : "Questions en attente";
+  const counter = isAdmin
+    ? `${pending.length} SANS RÉPONSE`
+    : showTreated
+      ? `${treated.length} TRAITÉES`
+      : `${pending.length} EN ATTENTE`;
+  const empty = isAdmin
+    ? "Aucune question en attente"
+    : showTreated
+      ? "Aucune question traitée"
+      : "Aucune question en attente pour tes directions";
 
   return (
     <section
