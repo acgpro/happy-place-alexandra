@@ -9,9 +9,12 @@ export function menuTabClass(on: boolean, sub?: boolean): string {
   } ${sub ? "text-label-sm" : ""}`;
 }
 
-/** Nom accessible d'une entrée portant un CountBadge (le badge est masqué aux lecteurs d'écran). */
-export function menuTabLabel(name: string, count: number): string | undefined {
-  return count > 0 ? `${name}, ${count} en attente` : undefined;
+/**
+ * Nom accessible d'une entrée portant un CountBadge (le badge est masqué aux lecteurs d'écran).
+ * `showZero` : sous-menu « à traiter », annoncé aussi à 0.
+ */
+export function menuTabLabel(name: string, count: number, showZero = false): string | undefined {
+  return count > 0 || showZero ? `${name}, ${count} en attente` : undefined;
 }
 
 /** Barre de menu de premier niveau (même présentation que « Gérer les actualités »). */

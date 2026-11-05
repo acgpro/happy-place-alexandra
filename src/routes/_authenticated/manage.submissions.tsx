@@ -265,11 +265,11 @@ function IdeaMenuLink({
       to="/manage/submissions"
       search={{ vue: to }}
       aria-current={on ? "page" : undefined}
-      aria-label={name ? menuTabLabel(name, count) : undefined}
+      aria-label={name ? menuTabLabel(name, count, true) : undefined}
       className={menuTabClass(on)}
     >
       {label}
-      <CountBadge count={count} />
+      <CountBadge count={count} showZero={!!name} />
     </Link>
   );
 }
