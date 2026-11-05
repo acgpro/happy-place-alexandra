@@ -151,6 +151,16 @@
   }
 }
 
+/*
+ * Champs de saisie : Inter Tight 15 px partout (chiffres lisibles).
+ * Hors couche Tailwind, donc prioritaire sur les classes utilitaires de police.
+ */
+input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]),
+textarea {
+  font-family: var(--font-body-md);
+  font-size: var(--text-body-md);
+}
+
 @utility bento-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));

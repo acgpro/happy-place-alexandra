@@ -477,7 +477,7 @@ function ManagerSpace() {
                   TITRE
                 </label>
                 <input
-                  className="w-full bg-transparent border-b border-outline-variant focus:border-primary transition-colors font-headline-sm text-headline-sm px-0 py-xs"
+                  className="w-full bg-transparent border-b border-outline-variant focus:border-primary transition-colors px-0 py-xs"
                    placeholder="Saisis un titre…"
                   type="text"
                   value={title}
