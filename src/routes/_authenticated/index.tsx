@@ -512,7 +512,7 @@ function ManagerSpace() {
                   <button
                     type="submit"
                     disabled={saveDraft.isPending}
-                    className="px-lg py-xs bg-primary text-on-primary font-label-md text-label-md disabled:opacity-50"
+                    className="px-lg py-xs bg-primary text-on-primary font-label-md text-label-md uppercase disabled:opacity-50"
                   >
                     {saveDraft.isPending ? "Enregistrement…" : "Enregistrer le brouillon"}
                   </button>
