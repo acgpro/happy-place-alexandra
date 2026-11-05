@@ -24,7 +24,8 @@ export function BlockCounter({ children }: { children: ReactNode }) {
 export function CountBadge({ count, showZero = false }: { count: number; showZero?: boolean }) {
   if (count <= 0 && !showZero) return null;
   return (
-    <span aria-hidden="true" className="bg-tertiary-fixed text-on-tertiary-fixed px-xs font-label-sm text-label-sm">
+    // Rose de la charte : fond #f8dddc (aucun jeton exact), texte #232428 (= jeton foreground).
+    <span aria-hidden="true" className="bg-[#f8dddc] text-foreground px-xs font-label-sm text-label-sm">
       {count}
     </span>
   );
