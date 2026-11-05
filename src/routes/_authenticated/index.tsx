@@ -369,9 +369,9 @@ function ManagerSpace() {
           </div>
         </div>
 
-        {/* Trois accueils : une seule rangée pleine largeur, boutons à écarts égaux */}
+        {/* Collaborateur : une rangée alignée à gauche, même écart (gap-xs) que les accueils admin et manager */}
         {role === "collaborateur" && (
-          <div className="flex flex-col items-stretch gap-xs mb-lg sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-col items-stretch gap-xs mb-lg sm:flex-row sm:flex-wrap sm:items-center">
             {submitIdeaButton}
             {myIdeasLink}
             {askQuestionButton}
