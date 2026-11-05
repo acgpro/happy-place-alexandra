@@ -119,56 +119,65 @@ function MyIdeas() {
                 },
               ]}
             />
-            <MyViewBlock
-              title={BLOCKS[vue].title}
-              counter={`${shown.length} ${BLOCKS[vue].counter}`}
-              empty={BLOCKS[vue].empty}
-              isEmpty={shown.length === 0}
-            >
-              <div className="space-y-xs">
-                {shown.map((s) => (
-                  <div
-                    key={s.id}
-                    className="p-sm border border-outline-variant bg-card min-w-0 overflow-hidden"
-                  >
-                    <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
-                    <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
-                    <p className="text-[11px] font-label-sm text-on-surface-variant uppercase mt-xs">
-                      {answeredIds.includes(s.id) && !seenAtOpening.has(s.id) && (
-                        <span className="bg-tertiary-fixed text-on-tertiary-fixed px-xs font-label-sm text-label-sm normal-case mr-xs">
-                          Nouveau
-                        </span>
-                      )}
-                      {s.status} • {s.team} • {timeAgo(s.created_at)}
-                    </p>
-                    {s.status === "en attente" && (
-                      <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
-                        Pas encore de réponse
-                      </p>
-                    )}
-                    {s.status === "validée" &&
-                      (() => {
-                        const response = myResponses.data?.find((r) => r.submission_id === s.id);
-                        if (response)
-                          return <ResponseBlock response={response} className="mt-xs" />;
-                        return myResponses.isSuccess ? (
-                          <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
-                            Aucune réponse enregistrée
-                          </p>
-                        ) : null;
-                      })()}
-                    {s.status === "refusée" && s.rejection_category && (
-                      <div className="mt-xs p-xs bg-error-container text-on-error-container text-body-sm wrap-anywhere">
-                        <p className="font-bold">Motif : {s.rejection_category}</p>
-                        <p className="whitespace-pre-line">
-                          Raison : <Linkify text={s.rejection_note ?? ""} />
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            {mine.data.length === 0 && vue === "attente" ? (
+              <div className="border border-outline-variant bg-surface-container-lowest p-md text-center space-y-xs">
+                <p className="font-headline-md text-headline-md text-primary">Aucune idée soumise</p>
+                <p className="text-on-surface-variant">
+                  Soumets une idée depuis la vue d'ensemble : elle apparaîtra ici avec la réponse du manager.
+                </p>
               </div>
-            </MyViewBlock>
+            ) : (
+              <MyViewBlock
+                title={BLOCKS[vue].title}
+                counter={`${shown.length} ${BLOCKS[vue].counter}`}
+                empty={BLOCKS[vue].empty}
+                isEmpty={shown.length === 0}
+              >
+                <div className="space-y-xs">
+                  {shown.map((s) => (
+                    <div
+                      key={s.id}
+                      className="p-sm border border-outline-variant bg-card min-w-0 overflow-hidden"
+                    >
+                      <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
+                      <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
+                      <p className="text-[11px] font-label-sm text-on-surface-variant uppercase mt-xs">
+                        {answeredIds.includes(s.id) && !seenAtOpening.has(s.id) && (
+                          <span className="bg-tertiary-fixed text-on-tertiary-fixed px-xs font-label-sm text-label-sm normal-case mr-xs">
+                            Nouveau
+                          </span>
+                        )}
+                        {s.status} • {s.team} • {timeAgo(s.created_at)}
+                      </p>
+                      {s.status === "en attente" && (
+                        <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
+                          Pas encore de réponse
+                        </p>
+                      )}
+                      {s.status === "validée" &&
+                        (() => {
+                          const response = myResponses.data?.find((r) => r.submission_id === s.id);
+                          if (response)
+                            return <ResponseBlock response={response} className="mt-xs" />;
+                          return myResponses.isSuccess ? (
+                            <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
+                              Aucune réponse enregistrée
+                            </p>
+                          ) : null;
+                        })()}
+                      {s.status === "refusée" && s.rejection_category && (
+                        <div className="mt-xs p-xs bg-error-container text-on-error-container text-body-sm wrap-anywhere">
+                          <p className="font-bold">Motif : {s.rejection_category}</p>
+                          <p className="whitespace-pre-line">
+                            Raison : <Linkify text={s.rejection_note ?? ""} />
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </MyViewBlock>
+            )}
           </>
         )}
       </main>
