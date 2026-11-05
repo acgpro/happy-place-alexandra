@@ -299,7 +299,7 @@ function ManagerSpace() {
   }
 
   const secondaryButton =
-    "flex items-center gap-xs px-md py-xs border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all";
+    "flex h-[44px] items-center gap-xs px-md py-0 border border-outline text-primary font-label-md text-label-md hover:bg-surface-container transition-all";
   const submitIdeaButton = (
     <button
       onClick={() => {
@@ -307,7 +307,7 @@ function ManagerSpace() {
         const only = role === "manager" && myTeams.data?.length === 1 ? myTeams.data[0] : "";
         setSubmissionForm({ author_name: "", team: only, content: "", status: "en attente" });
       }}
-      className="flex items-center gap-xs px-md py-xs border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
+      className="flex h-[44px] items-center gap-xs px-md py-0 border border-primary bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
     >
       <Icon name="add" /> SOUMETTRE UNE IDÉE
     </button>
@@ -376,17 +376,13 @@ function ManagerSpace() {
           </div>
         </div>
 
-        {/* Collaborateur et admin : une rangée pleine largeur, idées à gauche, questions (et gestion) à droite */}
+        {/* Trois accueils : une seule rangée pleine largeur, boutons à écarts égaux */}
         {role === "collaborateur" && (
           <div className="flex flex-col items-stretch gap-xs mb-lg sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <div className="flex flex-col items-stretch gap-xs sm:flex-row sm:flex-wrap">
-              {submitIdeaButton}
-              {myIdeasLink}
-            </div>
-            <div className="flex flex-col items-stretch gap-xs sm:flex-row sm:flex-wrap">
-              {askQuestionButton}
-              {myQuestionsLink}
-            </div>
+            {submitIdeaButton}
+            {myIdeasLink}
+            {askQuestionButton}
+            {myQuestionsLink}
           </div>
         )}
         {role === "admin" && (
