@@ -1,6 +1,16 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { BrandHeader } from "@/components/brand-header";
-import { PendingSubmissions } from "@/components/pending-submissions";
+import { CountBadge } from "@/components/count-badge";
+import {
+  PendingSubmissions,
+  TreatedSubmissions,
+  usePendingSubmissions,
+} from "@/components/pending-submissions";
+import { MenuBar, menuTabClass, menuTabLabel } from "@/components/sub-menu";
+
+/** Vues du menu : attente = idées auxquelles le manager doit répondre ; traitees = validées ou refusées. */
+const IDEA_VIEWS = ["attente", "traitees"] as const;
+type IdeaView = (typeof IDEA_VIEWS)[number];
 
 export const Route = createFileRoute("/_authenticated/idees-collaborateur")({
   head: () => ({
@@ -12,6 +22,9 @@ export const Route = createFileRoute("/_authenticated/idees-collaborateur")({
       },
     ],
   }),
+  // vue optionnelle : les liens existants vers /idees-collaborateur (sans paramètre) restent valides.
+  validateSearch: (search: Record<string, unknown>): { vue?: IdeaView } =>
+    IDEA_VIEWS.includes(search.vue as IdeaView) ? { vue: search.vue as IdeaView } : {},
   // Page du manager ; l'admin traite ces idées depuis son accueil.
   beforeLoad: ({ context }) => {
     if (context.role !== "manager") throw redirect({ to: "/" });
@@ -21,6 +34,9 @@ export const Route = createFileRoute("/_authenticated/idees-collaborateur")({
 
 function TeamIdeas() {
   const { email } = Route.useRouteContext();
+  const vue: IdeaView = Route.useSearch().vue ?? "attente";
+  // Même requête et même filtre que le badge « IDÉES COLLABORATEUR » de l'accueil.
+  const pending = usePendingSubmissions(email ?? "", !!email).pending.length;
   return (
     <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
       <BrandHeader />
@@ -39,8 +55,41 @@ function TeamIdeas() {
             ← RETOUR À LA VUE D'ENSEMBLE
           </Link>
         </div>
-        {email && <PendingSubmissions role="manager" email={email} />}
+        <MenuBar label="Idées collaborateur">
+          <IdeaMenuLink to="attente" current={vue} label="IDÉES EN ATTENTE" name="Idées en attente" count={pending} />
+          <IdeaMenuLink to="traitees" current={vue} label="IDÉES TRAITÉES" />
+        </MenuBar>
+        {email && vue === "attente" && <PendingSubmissions role="manager" email={email} />}
+        {email && vue === "traitees" && <TreatedSubmissions email={email} />}
       </main>
     </div>
+  );
+}
+
+function IdeaMenuLink({
+  to,
+  current,
+  label,
+  name,
+  count = 0,
+}: {
+  to: IdeaView;
+  current: IdeaView;
+  label: string;
+  name?: string;
+  count?: number;
+}) {
+  const on = current === to;
+  return (
+    <Link
+      to="/idees-collaborateur"
+      search={{ vue: to }}
+      aria-current={on ? "page" : undefined}
+      aria-label={name ? menuTabLabel(name, count) : undefined}
+      className={menuTabClass(on)}
+    >
+      {label}
+      <CountBadge count={count} />
+    </Link>
   );
 }

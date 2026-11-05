@@ -21,7 +21,9 @@ import {
 import { SubmissionReader } from "@/components/submission-reader";
 import { rejectionSchema, responseSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
+  fetchMyManagedTeams,
   fetchSubmissions,
+  fetchTreatedSubmissions,
   REJECTION_CATEGORIES,
   reviewSubmission,
   timeAgo,
@@ -413,6 +415,81 @@ export function PendingSubmissions({
           </form>
         </Modal>
       )}
+    </section>
+  );
+}
+
+/**
+ * Idées traitées (validées ou refusées) des équipes du manager (manager_teams), hors ses propres idées.
+ * Lecture seule : l'idée s'ouvre dans le lecteur, qui affiche la réponse ou le motif du refus.
+ */
+export function TreatedSubmissions({ email }: { email: string }) {
+  const myEmail = email.toLowerCase();
+  const [reading, setReading] = useState<Submission | null>(null);
+  const teams = useQuery({
+    queryKey: ["manager_teams", "mine", email],
+    queryFn: () => fetchMyManagedTeams(email),
+    enabled: !!email,
+    retry: false,
+  });
+  const myTeams = teams.data ?? [];
+  const treated = useQuery({
+    queryKey: ["submissions", "treated", myTeams],
+    queryFn: () => fetchTreatedSubmissions(myTeams),
+    enabled: teams.isSuccess,
+    retry: false,
+  });
+  // Les idées validées sont lisibles par tous : on ne garde que les équipes du manager, hors ses propres idées.
+  const shown = (treated.data ?? []).filter(
+    (s) => myTeams.includes(s.team) && (s.submitted_by_email ?? "").toLowerCase() !== myEmail,
+  );
+
+  return (
+    <section className="min-w-0 bg-surface-container-lowest border border-outline-variant p-md flex flex-col">
+      <div className="flex items-center justify-between border-b border-outline-variant pb-sm mb-md">
+        <h2 className="font-headline-sm text-headline-sm text-primary">Idées traitées</h2>
+        <span className="border border-outline px-xs py-1 font-label-sm text-label-sm uppercase text-primary">
+          {shown.length} TRAITÉES
+        </span>
+      </div>
+      <div className="space-y-sm min-w-0">
+        {(teams.isLoading || treated.isLoading) && (
+          <p className="text-body-sm text-on-surface-variant">Chargement…</p>
+        )}
+        {(teams.isError || treated.isError) && (
+          <p className="text-body-sm text-error">Les idées sont indisponibles.</p>
+        )}
+        {treated.isSuccess && shown.length === 0 && (
+          <p className="text-body-sm text-on-surface-variant italic">Aucune idée traitée.</p>
+        )}
+        {shown.map((s) => (
+          <div
+            key={s.id}
+            className="p-sm border border-outline-variant bg-card space-y-sm min-w-0 overflow-hidden"
+          >
+            <div className="flex items-start justify-between gap-xs">
+              <div className="flex items-center gap-sm min-w-0 flex-1">
+                <div className="w-8 h-8 shrink-0 rounded-full bg-secondary-fixed flex items-center justify-center">
+                  <Icon name="person" className="text-sm" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-body-sm text-primary font-bold wrap-anywhere">{s.author_name}</p>
+                  <p className="text-[10px] text-on-surface-variant font-label-sm wrap-anywhere">
+                    {s.team} · {timeAgo(s.created_at)}
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 flex items-center gap-1 border border-outline px-xs py-1 font-label-sm text-label-sm uppercase text-primary">
+                <Icon name={s.status === "validée" ? "check_circle" : "block"} />
+                {s.status}
+              </span>
+            </div>
+            <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
+            <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
+          </div>
+        ))}
+      </div>
+      <SubmissionReader submission={reading} onClose={() => setReading(null)} />
     </section>
   );
 }

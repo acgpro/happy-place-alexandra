@@ -14,6 +14,15 @@ export function menuTabLabel(name: string, count: number): string | undefined {
   return count > 0 ? `${name}, ${count} en attente` : undefined;
 }
 
+/** Barre de menu de premier niveau (même présentation que « Gérer les actualités »). */
+export function MenuBar({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <nav aria-label={label} className="flex flex-wrap gap-xs border-b border-outline-variant pb-sm">
+      {children}
+    </nav>
+  );
+}
+
 export function SubMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <nav aria-label={`Sous-menu ${label}`} className="flex flex-wrap gap-xs pl-md border-l-2 border-primary">

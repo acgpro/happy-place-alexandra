@@ -176,6 +176,29 @@ export async function fetchSubmissions(): Promise<Submission[]> {
   return (data ?? []) as Submission[];
 }
 
+/** Équipes rattachées au manager connecté (manager_teams), triées. */
+export async function fetchMyManagedTeams(email: string): Promise<string[]> {
+  const { data, error } = await db
+    .from("manager_teams")
+    .select("team, allowed_users!inner(email)")
+    .eq("allowed_users.email", email.toLowerCase());
+  if (error) throw error;
+  return (data ?? []).map((t) => t.team).sort();
+}
+
+/** Idées traitées (validées ou refusées) des équipes données, les plus récentes d'abord. */
+export async function fetchTreatedSubmissions(teams: string[]): Promise<Submission[]> {
+  if (teams.length === 0) return [];
+  const { data, error } = await db
+    .from("submissions")
+    .select("*")
+    .in("status", ["validée", "refusée"])
+    .in("team", teams)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Submission[];
+}
+
 /** « Prénom Nom » de l'utilisateur, lu dans allowed_users ; null s'il est introuvable. */
 export async function fetchMyFullName(email: string): Promise<string | null> {
   const { data, error } = await db

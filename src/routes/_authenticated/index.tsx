@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { signOut } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -28,6 +27,7 @@ import {
   deltaText,
   fetchNews,
   fetchMyFullName,
+  fetchMyManagedTeams,
   fetchMySubmissions,
   fetchResponses,
   exportMyRecentSubmissions,
@@ -120,14 +120,7 @@ function ManagerSpace() {
   const myTeams = useQuery({
     queryKey: ["manager_teams", "mine", email],
     enabled: role === "manager" && !!email,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("manager_teams")
-        .select("team, allowed_users!inner(email)")
-        .eq("allowed_users.email", (email ?? "").toLowerCase());
-      if (error) throw error;
-      return (data ?? []).map((t) => t.team).sort();
-    },
+    queryFn: () => fetchMyManagedTeams(email ?? ""),
   });
   const [attachment, setAttachment] = useState<File | null>(null);
   const [reading, setReading] = useState<Submission | null>(null);
