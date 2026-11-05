@@ -1,9 +1,10 @@
 import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { BrandHeader } from "@/components/brand-header";
 import { CountBadge } from "@/components/count-badge";
+import { ManageActionSlot } from "@/components/manage/action-slot";
 import { processAttachmentDeletionQueue } from "@/lib/dashboard";
 import { useAdminPendingCounts } from "@/lib/admin-pending";
 
@@ -44,6 +45,8 @@ function ManageLayout() {
   const { email } = Route.useRouteContext();
   const myEmail = (email ?? "").toLowerCase();
   const counts = useAdminPendingCounts(myEmail, !!myEmail);
+  // Emplacement d'action de l'onglet actif, aligné à droite de la ligne des onglets.
+  const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
   // Suppression silencieuse des pièces jointes échues, une fois par chargement de /manage
   useEffect(() => {
     processAttachmentDeletionQueue()
@@ -90,9 +93,12 @@ function ManageLayout() {
               </Link>
             );
           })}
+          <div ref={setActionSlot} className="ml-auto flex items-center gap-xs" />
         </nav>
 
-        <Outlet />
+        <ManageActionSlot.Provider value={actionSlot}>
+          <Outlet />
+        </ManageActionSlot.Provider>
       </main>
     </div>
   );

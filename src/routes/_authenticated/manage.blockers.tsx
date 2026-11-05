@@ -14,6 +14,7 @@ import {
   TextInput,
 } from "@/components/manage/crud-ui";
 import { CountBadge } from "@/components/count-badge";
+import { ManageAction } from "@/components/manage/action-slot";
 import { MenuBar, menuTabClass, menuTabLabel } from "@/components/sub-menu";
 import { blockerSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
@@ -145,7 +146,8 @@ function ManageBlockers() {
 
   return (
     <section className="space-y-md">
-      <MenuBar label="Points bloquants">
+      {/* Ligne des onglets principaux, à droite : visible seulement sur l'onglet POINTS BLOQUANTS */}
+      <ManageAction>
         <button
           type="button"
           onClick={() => {
@@ -157,6 +159,8 @@ function ManageBlockers() {
         >
           + NOUVEAU POINT BLOQUANT
         </button>
+      </ManageAction>
+      <MenuBar label="Points bloquants">
         <BlockerMenuLink to="ouverts" current={vue} label="OUVERTS" name="Ouverts" count={openCount} />
         <BlockerMenuLink to="en-cours" current={vue} label="EN COURS" />
         <BlockerMenuLink to="surveillance" current={vue} label="SURVEILLANCE" />
