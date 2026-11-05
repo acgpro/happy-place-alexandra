@@ -19,13 +19,12 @@ import { SubmissionReader } from "@/components/submission-reader";
 import { SubmissionHistory } from "@/components/manage/submission-history";
 import { CountBadge } from "@/components/count-badge";
 import { ManageAction } from "@/components/manage/action-slot";
-import { useAdminActionableIdeas } from "@/components/pending-submissions";
+import { pendingIdeas, useAllSubmissions } from "@/lib/admin-pending";
 import { MenuBar, menuTabClass, menuTabLabel } from "@/components/sub-menu";
 import { submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
   createSubmission,
   deleteSubmission,
-  fetchAllSubmissions,
   fetchMyFullName,
   timeAgo,
   type Submission,
@@ -66,8 +65,6 @@ function ManageSubmissions() {
   const qc = useQueryClient();
   const { email } = Route.useRouteContext();
   const vue: IdeaView = Route.useSearch().vue ?? "attente";
-  // Même compteur que le badge de l'onglet « IDÉES » : idées que l'admin peut traiter.
-  const actionable = useAdminActionableIdeas(email ?? "", !!email).length;
   const myName = useQuery({
     queryKey: ["allowed_users", "me", email],
     queryFn: () => fetchMyFullName(email ?? ""),
@@ -80,15 +77,12 @@ function ManageSubmissions() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [toDelete, setToDelete] = useState<Submission | null>(null);
 
-  const list = useQuery({
-    queryKey: ["submissions", "all"],
-    queryFn: fetchAllSubmissions,
-    retry: false,
-  });
+  const list = useAllSubmissions();
   // Même requête qu'avant, filtrée côté client selon la vue.
-  const shown = (list.data ?? []).filter((s) =>
-    vue === "attente" ? s.status === "en attente" : s.status !== "en attente",
-  );
+  // Source unique : le badge « Idées en attente » compte exactement cette liste.
+  const pending = pendingIdeas(list.data);
+  const shown =
+    vue === "attente" ? pending : (list.data ?? []).filter((s) => s.status !== "en attente");
   const [reading, setReading] = useState<Submission | null>(null);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["submissions"] });
   const onError = (e: unknown) => toast.error((e as Error).message);
@@ -152,7 +146,7 @@ function ManageSubmissions() {
           current={vue}
           label="IDÉES EN ATTENTE"
           name="Idées en attente"
-          count={actionable}
+          count={pending.length}
         />
         <IdeaMenuLink to="traitees" current={vue} label="IDÉES TRAITÉES" />
       </MenuBar>

@@ -1,7 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchBlockers, fetchNews } from "@/lib/dashboard";
-import { useAdminActionableIdeas } from "@/components/pending-submissions";
+import { fetchAllSubmissions, fetchBlockers, fetchNews, type Submission } from "@/lib/dashboard";
 import { draftCounts } from "@/lib/news-views";
+
+/** Toutes les idées (admin) : même requête et même clé que la page « Gestion des données > Idées ». */
+export function useAllSubmissions(enabled = true) {
+  return useQuery({ queryKey: ["submissions", "all"], queryFn: fetchAllSubmissions, enabled, retry: false });
+}
+
+/** Liste « Idées en attente » de l'admin : statut « en attente », toutes idées comprises. Source unique de la liste et des badges. */
+export function pendingIdeas(list: Submission[] | undefined): Submission[] {
+  return (list ?? []).filter((s) => s.status === "en attente");
+}
 
 /**
  * Éléments en attente côté admin (badges « GÉRER LES ACTUALITÉS » et son menu, « GÉRER LES DONNÉES » et onglets de /manage).
@@ -11,8 +20,8 @@ import { draftCounts } from "@/lib/news-views";
 export function useAdminPendingCounts(email: string, enabled: boolean) {
   const news = useQuery({ queryKey: ["news"], queryFn: fetchNews, enabled, retry: false });
   const blockers = useQuery({ queryKey: ["blockers"], queryFn: fetchBlockers, enabled, retry: false });
-  // Idées que l'admin peut traiter (canActOn) : pas de badge pour une action impossible.
-  const ideas = useAdminActionableIdeas(email, enabled).length;
+  // Décision A : même nombre que la liste « Idées en attente » (onglet IDÉES et « GÉRER LES DONNÉES »).
+  const ideas = pendingIdeas(useAllSubmissions(enabled).data).length;
 
   // Mêmes filtres que le menu « Gérer les actualités » : mes brouillons + brouillons à valider
   const drafts = draftCounts(news.data, email.toLowerCase());

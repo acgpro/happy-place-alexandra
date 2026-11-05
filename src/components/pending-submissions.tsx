@@ -124,14 +124,6 @@ function canReview(
   return authorRole === "manager" || authorRole === "admin";
 }
 
-/** Idées en attente que l'admin peut réellement traiter (même règle que les boutons VALIDER / REFUSER). */
-export function useAdminActionableIdeas(email: string, enabled = true) {
-  const myEmail = email.toLowerCase();
-  const { submissions, pending } = usePendingSubmissions(email, enabled);
-  const roles = useAuthorRoles(submissions.data, enabled);
-  return pending.filter((s) => canReview(s, myEmail, true, roles.data));
-}
-
 /**
  * Bloc « Idées en attente » : accueil admin, page « Idées collaborateur » du manager.
  * Refus (motif + raison), validation (réponse, visibilité, brouillon IA) et lecture.
