@@ -18,6 +18,7 @@ import { Linkify } from "@/components/linkify";
 import { SubmissionReader } from "@/components/submission-reader";
 import { SubmissionHistory } from "@/components/manage/submission-history";
 import { CountBadge } from "@/components/count-badge";
+import { ManageAction } from "@/components/manage/action-slot";
 import { useAdminActionableIdeas } from "@/components/pending-submissions";
 import { MenuBar, menuTabClass, menuTabLabel } from "@/components/sub-menu";
 import { submissionSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
@@ -132,6 +133,19 @@ function ManageSubmissions() {
 
   return (
     <section className="space-y-md">
+      {/* Ligne des onglets principaux, à droite : visible seulement sur l'onglet IDÉES */}
+      <ManageAction>
+        <button
+          type="button"
+          onClick={() => {
+            setErrors({});
+            setForm({ ...empty });
+          }}
+          className="px-md py-xs bg-primary text-on-primary font-label-md text-label-md"
+        >
+          + NOUVELLE IDÉE
+        </button>
+      </ManageAction>
       <MenuBar label="Idées">
         <IdeaMenuLink
           to="attente"
@@ -142,20 +156,9 @@ function ManageSubmissions() {
         />
         <IdeaMenuLink to="traitees" current={vue} label="IDÉES TRAITÉES" />
       </MenuBar>
-      <div className="flex items-center justify-between">
-        <h2 className="font-headline-sm text-headline-sm text-primary">
-          {vue === "attente" ? "Idées en attente" : "Idées traitées"} ({shown.length})
-        </h2>
-        <button
-          onClick={() => {
-            setErrors({});
-            setForm({ ...empty });
-          }}
-          className="px-md py-xs bg-primary text-on-primary font-label-md text-label-md"
-        >
-          + NOUVELLE IDÉE
-        </button>
-      </div>
+      <h2 className="font-headline-sm text-headline-sm text-primary">
+        {vue === "attente" ? "Idées en attente" : "Idées traitées"} ({shown.length})
+      </h2>
 
       {list.isLoading && <p className="text-body-sm text-on-surface-variant">Chargement…</p>}
       {list.isError && (
