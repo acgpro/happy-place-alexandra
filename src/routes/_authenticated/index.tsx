@@ -497,7 +497,7 @@ function ManagerSpace() {
                   {editingNewsId && (
                     <button
                       type="button"
-                      className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary"
+                      className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary uppercase"
                       onClick={() => {
                         setEditingNewsId(null);
                         setTitle("");
@@ -553,7 +553,7 @@ function ManagerSpace() {
                             <div className="flex items-center gap-sm shrink-0">
                               <button
                                 type="button"
-                                className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary"
+                                className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary uppercase"
                                 onClick={() => {
                                   setEditingNewsId(n.id);
                                   setTitle(n.title);
@@ -566,7 +566,7 @@ function ManagerSpace() {
                               </button>
                               <button
                                 type="button"
-                                className="font-label-sm text-label-sm text-error"
+                                className="font-label-sm text-label-sm text-error uppercase"
                                 disabled={removeDraft.isPending}
                                 onClick={() => {
                                   if (window.confirm(`Supprimer le brouillon « ${n.title} » ?`))
@@ -577,7 +577,7 @@ function ManagerSpace() {
                               </button>
                               <button
                                 type="button"
-                                className="px-sm py-1 bg-primary text-on-primary font-label-sm text-label-sm disabled:opacity-50"
+                                className="px-sm py-1 bg-primary text-on-primary font-label-sm text-label-sm disabled:opacity-50 uppercase"
                                 disabled={publishDraft.isPending}
                                 onClick={() => {
                                   if (window.confirm(`Publier l'actualité « ${n.title} » ? Elle sera visible par tous.`))
