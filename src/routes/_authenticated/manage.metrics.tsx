@@ -19,6 +19,7 @@ import {
   type FieldErrors,
 } from "@/lib/manage-schemas";
 import { MetricHistory } from "@/components/manage/metric-history";
+import { ManageAction } from "@/components/manage/action-slot";
 import {
   createMetric,
   deleteMetric,
@@ -111,11 +112,10 @@ function ManageMetrics() {
 
   return (
     <section className="space-y-md">
-      <div className="flex items-center justify-between">
-        <h2 className="font-headline-sm text-headline-sm text-primary">
-          Indicateurs ({list.data?.length ?? 0})
-        </h2>
+      {/* Ligne des onglets principaux, à droite : visible seulement sur l'onglet INDICATEURS */}
+      <ManageAction>
         <button
+          type="button"
           onClick={() => {
             setEditing(null);
             setErrors({});
@@ -125,7 +125,10 @@ function ManageMetrics() {
         >
           + NOUVEL INDICATEUR
         </button>
-      </div>
+      </ManageAction>
+      <h2 className="font-headline-sm text-headline-sm text-primary">
+        Indicateurs ({list.data?.length ?? 0})
+      </h2>
 
       {list.isLoading && <p className="text-body-sm text-on-surface-variant">Chargement…</p>}
       {list.isError && (
