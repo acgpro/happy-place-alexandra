@@ -7,8 +7,18 @@ import { SubmissionPreview } from "@/components/expandable-card";
 import { Linkify } from "@/components/linkify";
 import { ResponseBlock } from "@/components/submission-response";
 import { SubmissionReader } from "@/components/submission-reader";
+import { MyViewBlock, MyViewsMenu } from "@/components/my-views";
 import { fetchMySubmissions, fetchResponses, timeAgo, type Submission } from "@/lib/dashboard";
 import { answeredIdeaIds, markIdeasSeen, readSeenIdeas } from "@/lib/idees-lues";
+
+/** Vues : attente = sans réponse ; validees / refusees = idées traitées selon leur statut. */
+const VIEWS = ["attente", "validees", "refusees"] as const;
+type View = (typeof VIEWS)[number];
+const VIEW_STATUS: Record<View, Submission["status"]> = {
+  attente: "en attente",
+  validees: "validée",
+  refusees: "refusée",
+};
 
 export const Route = createFileRoute("/_authenticated/idees")({
   head: () => ({
@@ -17,11 +27,21 @@ export const Route = createFileRoute("/_authenticated/idees")({
       { name: "description", content: "Les idées que tu as soumises, leur statut et les réponses des managers." },
     ],
   }),
+  // vue optionnelle : les liens existants vers /idees (sans paramètre) restent valides.
+  validateSearch: (search: Record<string, unknown>): { vue?: View } =>
+    VIEWS.includes(search.vue as View) ? { vue: search.vue as View } : {},
   component: MyIdeas,
 });
 
+const BLOCKS: Record<View, { title: string; counter: string; empty: string }> = {
+  attente: { title: "Idées en attente", counter: "EN ATTENTE", empty: "Aucune idée en attente." },
+  validees: { title: "Idées validées", counter: "VALIDÉES", empty: "Aucune idée validée." },
+  refusees: { title: "Idées refusées", counter: "REFUSÉES", empty: "Aucune idée refusée." },
+};
+
 function MyIdeas() {
   const { email, user } = Route.useRouteContext();
+  const vue: View = Route.useSearch().vue ?? "attente";
   const [reading, setReading] = useState<Submission | null>(null);
   // Idées déjà vues, lues une seule fois à l'ouverture : les pastilles restent stables pendant la visite.
   const [seenAtOpening] = useState(() => readSeenIdeas(user.id));
@@ -39,12 +59,18 @@ function MyIdeas() {
     retry: false,
   });
   const answeredIds = mine.data ? answeredIdeaIds(mine.data, myResponses.data) : [];
-  // Réponses affichées : enregistrées comme vues au démontage de la page, jamais avant l'affichage.
-  const displayedAnswers = useRef<string[]>([]);
+  const shown = (mine.data ?? []).filter((s) => s.status === VIEW_STATUS[vue]);
+  // Réponses nouvelles par vue : mêmes règles que la pastille « Nouveau ».
+  const unread = (status: Submission["status"]) =>
+    (mine.data ?? []).filter(
+      (s) => s.status === status && answeredIds.includes(s.id) && !seenAtOpening.has(s.id),
+    ).length;
+  // Réponses affichées (cumul des vues ouvertes) : enregistrées comme vues au démontage, jamais avant l'affichage.
+  const displayedAnswers = useRef<Set<string>>(new Set());
   useEffect(() => {
-    displayedAnswers.current = answeredIds;
+    shown.forEach((s) => answeredIds.includes(s.id) && displayedAnswers.current.add(s.id));
   });
-  useEffect(() => () => markIdeasSeen(user.id, displayedAnswers.current), [user.id]);
+  useEffect(() => () => markIdeasSeen(user.id, [...displayedAnswers.current]), [user.id]);
 
   return (
     <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
@@ -80,45 +106,78 @@ function MyIdeas() {
           </div>
         )}
         {mine.data && mine.data.length > 0 && (
-          <section className="bg-surface-container-lowest border border-outline-variant p-md" aria-label="Mes idées">
-            <div className="space-y-xs">
-              {mine.data.map((s) => (
-                <div key={s.id} className="p-sm border border-outline-variant bg-card min-w-0 overflow-hidden">
-                  <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
-                  <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
-                  <p className="text-[11px] font-label-sm text-on-surface-variant uppercase mt-xs">
-                    {answeredIds.includes(s.id) && !seenAtOpening.has(s.id) && (
-                      <span className="bg-tertiary-fixed text-on-tertiary-fixed px-xs font-label-sm text-label-sm normal-case mr-xs">
-                        Nouveau
-                      </span>
-                    )}
-                    {s.status} • {s.team} • {timeAgo(s.created_at)}
-                  </p>
-                  {s.status === "en attente" && (
-                    <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">Pas encore de réponse</p>
-                  )}
-                  {s.status === "validée" &&
-                    (() => {
-                      const response = myResponses.data?.find((r) => r.submission_id === s.id);
-                      if (response) return <ResponseBlock response={response} className="mt-xs" />;
-                      return myResponses.isSuccess ? (
-                        <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
-                          Aucune réponse enregistrée
-                        </p>
-                      ) : null;
-                    })()}
-                  {s.status === "refusée" && s.rejection_category && (
-                    <div className="mt-xs p-xs bg-error-container text-on-error-container text-body-sm wrap-anywhere">
-                      <p className="font-bold">Motif : {s.rejection_category}</p>
-                      <p className="whitespace-pre-line">
-                        Raison : <Linkify text={s.rejection_note ?? ""} />
+          <>
+            <MyViewsMenu
+              to="/idees"
+              label="Mes idées"
+              current={vue}
+              tabs={[
+                { vue: "attente", label: "IDÉES EN ATTENTE", name: "Idées en attente" },
+                {
+                  vue: "validees",
+                  label: "IDÉES VALIDÉES",
+                  name: "Idées validées",
+                  unread: unread("validée"),
+                },
+                {
+                  vue: "refusees",
+                  label: "IDÉES REFUSÉES",
+                  name: "Idées refusées",
+                  unread: unread("refusée"),
+                },
+              ]}
+            />
+            <MyViewBlock
+              title={BLOCKS[vue].title}
+              counter={`${shown.length} ${BLOCKS[vue].counter}`}
+              empty={BLOCKS[vue].empty}
+              isEmpty={shown.length === 0}
+            >
+              <div className="space-y-xs">
+                {shown.map((s) => (
+                  <div
+                    key={s.id}
+                    className="p-sm border border-outline-variant bg-card min-w-0 overflow-hidden"
+                  >
+                    <SubmissionPreview content={s.content} onOpen={() => setReading(s)} />
+                    <AttachmentLink path={s.attachment_path} name={s.attachment_name} />
+                    <p className="text-[11px] font-label-sm text-on-surface-variant uppercase mt-xs">
+                      {answeredIds.includes(s.id) && !seenAtOpening.has(s.id) && (
+                        <span className="bg-tertiary-fixed text-on-tertiary-fixed px-xs font-label-sm text-label-sm normal-case mr-xs">
+                          Nouveau
+                        </span>
+                      )}
+                      {s.status} • {s.team} • {timeAgo(s.created_at)}
+                    </p>
+                    {s.status === "en attente" && (
+                      <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
+                        Pas encore de réponse
                       </p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
+                    )}
+                    {s.status === "validée" &&
+                      (() => {
+                        const response = myResponses.data?.find((r) => r.submission_id === s.id);
+                        if (response)
+                          return <ResponseBlock response={response} className="mt-xs" />;
+                        return myResponses.isSuccess ? (
+                          <p className="text-[11px] font-label-sm text-on-surface-variant mt-xs">
+                            Aucune réponse enregistrée
+                          </p>
+                        ) : null;
+                      })()}
+                    {s.status === "refusée" && s.rejection_category && (
+                      <div className="mt-xs p-xs bg-error-container text-on-error-container text-body-sm wrap-anywhere">
+                        <p className="font-bold">Motif : {s.rejection_category}</p>
+                        <p className="whitespace-pre-line">
+                          Raison : <Linkify text={s.rejection_note ?? ""} />
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </MyViewBlock>
+          </>
         )}
       </main>
       <SubmissionReader submission={reading} onClose={() => setReading(null)} />
