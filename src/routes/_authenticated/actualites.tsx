@@ -27,6 +27,9 @@ import {
 } from "@/lib/dashboard";
 import { NewsImage, NewsLinks, NewsMediaEditor } from "@/components/news-media";
 import { emptyMedia, linkErrors, mediaFromNews, toNewsLinks, type MediaDraft } from "@/lib/news-media";
+import { NEWS_VIEWS, draftCounts, filterNews, isMine, type NewsView } from "@/lib/news-views";
+import { CountBadge } from "@/components/count-badge";
+import { SubMenu, menuTabClass, menuTabLabel } from "@/components/sub-menu";
 
 export const Route = createFileRoute("/_authenticated/actualites")({
   head: () => ({
@@ -48,10 +51,6 @@ export const Route = createFileRoute("/_authenticated/actualites")({
   component: NewsPage,
 });
 
-/** Vues du menu : mes = toutes mes actualités ; le reste filtre par statut et par auteur. */
-const NEWS_VIEWS = ["mes", "brouillons-mes", "brouillons-valider", "publiees-mes", "publiees-manager"] as const;
-type NewsView = (typeof NEWS_VIEWS)[number];
-
 const viewTitles: Record<NewsView, string> = {
   mes: "Mes actualités",
   "brouillons-mes": "Mes brouillons",
@@ -66,28 +65,6 @@ const viewEmpty: Record<NewsView, string> = {
   "publiees-mes": "Aucune actualité publiée.",
   "publiees-manager": "Aucune actualité de manager publiée.",
 };
-
-/** Actualité de l'admin connecté ou ancienne ligne sans auteur identifié (relève de l'administration). */
-function isMine(n: News, myEmail: string): boolean {
-  return !n.author_email || n.author_email.toLowerCase() === myEmail;
-}
-
-/** Filtre une liste d'actualités selon la vue. Une actualité sans author_email (anciennes lignes) relève de l'administration : elle compte comme « à moi ». */
-function filterNews(all: News[], vue: NewsView, myEmail: string): News[] {
-  const mine = (n: News) => isMine(n, myEmail);
-  switch (vue) {
-    case "mes":
-      return all.filter(mine);
-    case "brouillons-mes":
-      return all.filter((n) => n.status === "brouillon" && mine(n));
-    case "brouillons-valider":
-      return all.filter((n) => n.status === "brouillon" && !mine(n));
-    case "publiees-mes":
-      return all.filter((n) => n.status === "publiée" && mine(n));
-    case "publiees-manager":
-      return all.filter((n) => n.status === "publiée" && !mine(n));
-  }
-}
 
 /** Page autonome « Gérer les actualités » (admin), sur le modèle de « Gestion des données », avec un menu à sous-menus (paramètre ?vue=). */
 function NewsPage() {
@@ -149,6 +126,7 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
   // Une actualité ou un brouillon d'un autre compte (manager) garde sa direction émettrice.
   const authorLocked = !!editing && !isMine(editing, myEmail);
   const shown = filterNews(list.data ?? [], vue, myEmail);
+  const drafts = draftCounts(list.data, myEmail);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["news"] });
   const onError = (e: unknown) => toast.error((e as Error).message);
 
@@ -216,6 +194,8 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
           to="brouillons-mes"
           current={vue}
           label="BROUILLONS"
+          name="Brouillons"
+          count={drafts.total}
           active={vue.startsWith("brouillons")}
         />
         <MenuLink
@@ -228,8 +208,22 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
 
       {vue.startsWith("brouillons") && (
         <SubMenu label="Brouillons">
-          <MenuLink to="brouillons-mes" current={vue} label="MES BROUILLONS" sub />
-          <MenuLink to="brouillons-valider" current={vue} label="BROUILLONS À VALIDER" sub />
+          <MenuLink
+            to="brouillons-mes"
+            current={vue}
+            label="MES BROUILLONS"
+            name="Mes brouillons"
+            count={drafts.mine}
+            sub
+          />
+          <MenuLink
+            to="brouillons-valider"
+            current={vue}
+            label="BROUILLONS À VALIDER"
+            name="Brouillons à valider"
+            count={drafts.toValidate}
+            sub
+          />
         </SubMenu>
       )}
       {vue.startsWith("publiees") && (
@@ -366,17 +360,21 @@ function ManageNews({ vue, myEmail }: { vue: NewsView; myEmail: string }) {
   );
 }
 
-/** Entrée de menu : lien vers /actualites?vue=... ; `active` marque l'entrée parente d'un sous-menu. */
+/** Entrée de menu : lien vers /actualites?vue=... ; `active` marque l'entrée parente d'un sous-menu ; `count` affiche un CountBadge. */
 function MenuLink({
   to,
   current,
   label,
+  name,
+  count = 0,
   active,
   sub,
 }: {
   to: NewsView;
   current: NewsView;
   label: string;
+  name?: string;
+  count?: number;
   active?: boolean;
   sub?: boolean;
 }) {
@@ -386,21 +384,11 @@ function MenuLink({
       to="/actualites"
       search={{ vue: to }}
       aria-current={on ? "page" : undefined}
-      className={`flex items-center gap-xs px-md py-xs border font-label-md text-label-md ${
-        on
-          ? "bg-primary text-on-primary border-primary"
-          : "text-on-surface-variant border-outline-variant hover:bg-surface-container"
-      } ${sub ? "text-label-sm" : ""}`}
+      aria-label={name ? menuTabLabel(name, count) : undefined}
+      className={menuTabClass(on, sub)}
     >
       {label}
+      <CountBadge count={count} />
     </Link>
-  );
-}
-
-function SubMenu({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <nav aria-label={`Sous-menu ${label}`} className="flex flex-wrap gap-xs pl-md border-l-2 border-primary">
-      {children}
-    </nav>
   );
 }
