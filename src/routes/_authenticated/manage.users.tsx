@@ -114,8 +114,20 @@ function UsersPage() {
         const { data, error: tErr } = await supabase.from("allowed_users").update({ team: parsed.data }).eq("id", v.id).select("id");
         if (tErr) throw tErr;
         if (!data?.length) throw new Error("Modification refusée : vérifie que tu es admin");
-      } else {
+      } else if (v.role === "manager") {
         const { data, error: tErr } = await supabase.from("allowed_users").update({ team: null }).eq("id", v.id).select("id");
+        if (tErr) throw tErr;
+        if (!data?.length) throw new Error("Modification refusée : vérifie que tu es admin");
+      } else if (v.team !== undefined) {
+        // Admin : direction facultative. Sans direction fournie (simple changement de rôle), elle est conservée.
+        let team: string | null = null;
+        if (v.team.trim() !== "") {
+          const parsed = teamSchema.safeParse(v.team);
+          if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+          if (parsed.data.toLowerCase() === "admin") throw new Error("L'équipe Admin ne peut pas être choisie comme direction.");
+          team = parsed.data;
+        }
+        const { data, error: tErr } = await supabase.from("allowed_users").update({ team }).eq("id", v.id).select("id");
         if (tErr) throw tErr;
         if (!data?.length) throw new Error("Modification refusée : vérifie que tu es admin");
       }
@@ -126,7 +138,7 @@ function UsersPage() {
         .select("id");
       if (error) throw error;
       if (!roleRows?.length) throw new Error("Modification refusée : vérifie que tu es admin");
-      if (v.role !== "manager") {
+      if (v.role === "collaborateur") {
         const { error: teamError } = await supabase.from("manager_teams").delete().eq("allowed_user_id", v.id);
         if (teamError) throw teamError;
       }
@@ -228,6 +240,11 @@ function UsersPage() {
       const t = teamSchema.safeParse(newTeam);
       if (!t.success) return setErr("Équipe requise : " + t.error.issues[0].message);
       team = t.data;
+    } else if (role === "admin" && newTeam !== "") {
+      const t = teamSchema.safeParse(newTeam);
+      if (!t.success) return setErr("Direction : " + t.error.issues[0].message);
+      if (t.data.toLowerCase() === "admin") return setErr("L'équipe Admin ne peut pas être choisie comme direction.");
+      team = t.data;
     }
     const fn = nameSchema.safeParse(firstName);
     if (!fn.success) return setErr("Prénom : " + fn.error.issues[0].message);
@@ -291,14 +308,14 @@ function UsersPage() {
           <option value="manager">Manager</option>
           <option value="admin">Admin</option>
         </select>
-        {role === "collaborateur" && (
+        {role !== "manager" && (
 <select
             value={newTeam}
             onChange={(e) => setNewTeam(e.target.value)}
-            aria-label="Équipe du collaborateur"
+            aria-label={role === "admin" ? "Direction de l'admin (facultative)" : "Équipe du collaborateur"}
             className="border border-outline-variant bg-surface px-sm py-xs font-body-md"
           >
-            <option value="">Choisir une équipe</option>
+            <option value="">{role === "admin" ? "Aucune direction (facultatif)" : "Choisir une équipe"}</option>
             {selectableTeams.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         )}
@@ -380,16 +397,16 @@ function UsersPage() {
                 </button>
               )}
             </div>
-            {u.role === "collaborateur" && (
+            {(u.role === "collaborateur" || u.role === "admin") && (
               <div className="flex flex-wrap items-center gap-xs border-t border-outline-variant pt-sm">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">ÉQUIPE :</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">{u.role === "admin" ? "DIRECTION :" : "ÉQUIPE :"}</span>
 <select
             value={memberTeams[u.id] ?? u.team ?? ""}
             onChange={(e) => setMemberTeams((c) => ({ ...c, [u.id]: e.target.value }))}
             aria-label={`Équipe de ${u.email}`}
             className="border border-outline-variant bg-surface px-sm py-1 font-body-md"
           >
-            <option value="">Choisir une équipe</option>
+            <option value="">{u.role === "admin" ? "Aucune direction" : "Choisir une équipe"}</option>
             {(u.team && !selectableTeams.includes(u.team) ? [u.team, ...selectableTeams] : selectableTeams).map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
                 {(() => {
@@ -398,10 +415,10 @@ function UsersPage() {
                   return (
                     <button
                       type="button"
-                      disabled={!chosen || chosen === u.team || saving}
+                      disabled={(u.role === "collaborateur" && !chosen) || chosen === (u.team ?? "") || saving}
                       onClick={() =>
                         update.mutate(
-                          { id: u.id, role: "collaborateur", team: chosen },
+                          { id: u.id, role: u.role, team: chosen },
                           {
                             onSuccess: () => {
                               toast.success("Équipe modifiée");
@@ -416,10 +433,10 @@ function UsersPage() {
                     </button>
                   );
                 })()}
-                {!u.team && <span className="text-error text-sm">Aucune équipe définie</span>}
+                {u.role === "collaborateur" && !u.team && <span className="text-error text-sm">Aucune équipe définie</span>}
               </div>
             )}
-            {u.role === "manager" && (
+            {(u.role === "manager" || u.role === "admin") && (
               <div className="flex flex-wrap items-center gap-xs border-t border-outline-variant pt-sm">
                 <span className="font-label-sm text-label-sm text-on-surface-variant">ÉQUIPES :</span>
                 {u.teams.map((team) => (

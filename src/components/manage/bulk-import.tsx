@@ -46,7 +46,7 @@ function download(blob: Blob, name: string) {
 
 const FALLBACK_TEAMS = [
   "Accounting", "Direction Commerciale", "Direction Conseil", "Direction recrutement", "Finance", "Legal",
-  "Marketing", "Opérations", "People", "Pôle Data et IA", "Product", "Relation clients", "Admin",
+  "Marketing", "Opérations", "People", "Pôle Data et IA", "Product", "Relation clients",
 ];
 
 async function fetchTeams(): Promise<string[]> {
@@ -54,9 +54,8 @@ async function fetchTeams(): Promise<string[]> {
     const { data, error } = await supabase.from("teams").select("name");
     if (error) throw error;
     const names = (data ?? []).map((r) => r.name);
-    const others = names.filter((n) => norm(n) !== "admin").sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
-    const admin = names.find((n) => norm(n) === "admin") ?? "Admin";
-    return [...others, admin];
+    // « Admin » n'est jamais proposée comme direction.
+    return names.filter((n) => norm(n) !== "admin").sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
   } catch {
     return FALLBACK_TEAMS;
   }
@@ -96,7 +95,7 @@ async function downloadTemplate() {
     "2. Remplis une ligne par personne dans l'onglet Utilisateurs.",
     "3. Choisis le rôle et l'équipe dans les menus déroulants.",
     "4. Une adresse mail ne peut apparaître qu'une fois : une adresse = un rôle.",
-    "5. Collaborateur : équipe obligatoire. Manager : équipe facultative, une équipe peut avoir plusieurs managers. Admin : équipe vide ou Admin.",
+    "5. Collaborateur : équipe obligatoire. Manager : équipe facultative, une équipe peut avoir plusieurs managers. Admin : laisser l'équipe vide.",
     "6. Exporte l'onglet Utilisateurs en CSV (Google Sheets : Fichier > Télécharger > CSV).",
     "7. Dans Happy Place : Gérer > Utilisateurs autorisés > Importer une liste, vérifie l'aperçu puis confirme.",
     "8. L'équipe doit exister dans Happy Place : un admin peut en créer une dans Gérer > Utilisateurs autorisés > Équipes.",
