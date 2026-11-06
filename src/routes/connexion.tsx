@@ -5,7 +5,7 @@ import { BrandHeader } from "@/components/brand-header";
 import { Button } from "@/components/ui/button";
 
 // Connexion par e-mail et mot de passe (comptes de démonstration par rôle).
-// Page ajoutée à côté de /auth : l'entrée anonyme et /choisir-role ne changent pas.
+// Seule entrée de l'application : il n'existe plus d'entrée anonyme.
 // Le rôle est lu ensuite par l'e-mail du compte (allowed_users, allowed_user_roles).
 
 export const Route = createFileRoute("/connexion")({
