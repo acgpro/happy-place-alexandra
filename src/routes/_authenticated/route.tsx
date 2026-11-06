@@ -2,6 +2,7 @@ import { createFileRoute, isRedirect, Outlet, redirect } from "@tanstack/react-r
 import { supabase } from "@/integrations/supabase/client";
 import { fetchOwnRole } from "@/lib/auth";
 
+// Sans session, retour à la page de connexion par e-mail (l'entrée anonyme reste sur /auth).
 // Version élèves : un compte connecté sans rôle est envoyé vers /choisir-role
 // (au lieu d'être déconnecté comme dans l'app d'origine, réservée à une liste blanche).
 export const Route = createFileRoute("/_authenticated")({
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     try {
       const { data, error } = await supabase.auth.getUser();
-      if (error || !data.user) throw redirect({ to: "/auth" });
+      if (error || !data.user) throw redirect({ to: "/connexion" });
       const email = data.user.email ?? "";
       const role = email ? await fetchOwnRole(email) : null;
       if (!role) throw redirect({ to: "/choisir-role" });
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/_authenticated")({
       if (isRedirect(e)) throw e;
       // Session périmée ou compte changé dans un autre onglet : retour propre à la connexion.
       await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-      throw redirect({ to: "/auth" });
+      throw redirect({ to: "/connexion" });
     }
   },
   component: () => <Outlet />,
