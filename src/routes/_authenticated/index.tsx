@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { signOutToConnexion } from "@/lib/auth";
+import { fetchIsNewsMember, signOutToConnexion } from "@/lib/auth";
+import { draftCounts } from "@/lib/news-views";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -102,6 +103,14 @@ function ManagerSpace() {
   const canReview = role === "admin" || role === "manager";
   const canWriteNews = role === "manager";
   const myEmail = (email ?? "").toLowerCase();
+  // Membre de la Direction RH - Communication Interne : lien « Gérer les actualités » et bouton « Publier ».
+  const newsMember = useQuery({
+    queryKey: ["news_member", myEmail],
+    queryFn: () => fetchIsNewsMember(myEmail),
+    enabled: !!myEmail,
+    retry: false,
+  });
+  const isNewsMember = newsMember.data === true;
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const myName =
     (typeof meta.full_name === "string" && meta.full_name) ||
@@ -250,6 +259,8 @@ function ManagerSpace() {
   // Badges admin : « GÉRER LES ACTUALITÉS » = mes brouillons + brouillons à valider ; « GÉRER LES DONNÉES » = idées en attente + points bloquants OUVERT, EN COURS, SURVEILLANCE
   const adminCounts = useAdminPendingCounts(myEmail, isAdmin && !!myEmail);
   const adminNews = adminCounts.news;
+  // Badge « GÉRER LES ACTUALITÉS » d'un manager membre : mêmes filtres que la page, sur la requête « news » déjà chargée.
+  const managerNews = role === "manager" && isNewsMember ? draftCounts(news.data, myEmail).total : 0;
   const adminPending = adminCounts.total;
   // Badge « MES IDÉES » : mêmes requêtes et mêmes clés de cache que la page « Mes idées ».
   const myIdeas = useQuery({
@@ -384,14 +395,16 @@ function ManagerSpace() {
             {myIdeasLink}
             {askQuestionButton}
             {myQuestionsLink}
-            <Link
-              to="/actualites"
-              aria-label={adminNews > 0 ? `Gérer les actualités, ${adminNews} en attente` : undefined}
-              className={secondaryButton}
-            >
-              <Icon name="newspaper" /> GÉRER LES ACTUALITÉS
-              <CountBadge count={adminNews} />
-            </Link>
+            {isNewsMember && (
+              <Link
+                to="/actualites"
+                aria-label={adminNews > 0 ? `Gérer les actualités, ${adminNews} en attente` : undefined}
+                className={secondaryButton}
+              >
+                <Icon name="newspaper" /> GÉRER LES ACTUALITÉS
+                <CountBadge count={adminNews} />
+              </Link>
+            )}
             <Link
               to="/manage/submissions"
               aria-label={adminPending > 0 ? `Gérer les données, ${adminPending} en attente` : undefined}
@@ -424,6 +437,16 @@ function ManagerSpace() {
               <Icon name="forum" /> QUESTIONS COLLABORATEUR
               <CountBadge count={pendingQuestions} />
             </Link>
+            {isNewsMember && (
+              <Link
+                to="/actualites"
+                aria-label={managerNews > 0 ? `Gérer les actualités, ${managerNews} en attente` : undefined}
+                className={secondaryButton}
+              >
+                <Icon name="newspaper" /> GÉRER LES ACTUALITÉS
+                <CountBadge count={managerNews} />
+              </Link>
+            )}
           </div>
         )}
 
@@ -575,17 +598,19 @@ function ManagerSpace() {
                               >
                                 Supprimer
                               </button>
-                              <button
-                                type="button"
-                                className="px-sm py-1 bg-primary text-on-primary font-label-sm text-label-sm disabled:opacity-50 uppercase"
-                                disabled={publishDraft.isPending}
-                                onClick={() => {
-                                  if (window.confirm(`Publier l'actualité « ${n.title} » ? Elle sera visible par tous.`))
-                                    publishDraft.mutate(n.id);
-                                }}
-                              >
-                                Publier
-                              </button>
+                              {isNewsMember && (
+                                <button
+                                  type="button"
+                                  className="px-sm py-1 bg-primary text-on-primary font-label-sm text-label-sm disabled:opacity-50 uppercase"
+                                  disabled={publishDraft.isPending}
+                                  onClick={() => {
+                                    if (window.confirm(`Publier l'actualité « ${n.title} » ? Elle sera visible par tous.`))
+                                      publishDraft.mutate(n.id);
+                                  }}
+                                >
+                                  Publier
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

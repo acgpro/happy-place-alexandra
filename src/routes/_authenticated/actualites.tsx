@@ -14,6 +14,7 @@ import {
   TextInput,
 } from "@/components/manage/crud-ui";
 import { BrandHeader } from "@/components/brand-header";
+import { NEWS_TEAM, fetchIsNewsMember } from "@/lib/auth";
 import { newsSchema, validate, type FieldErrors } from "@/lib/manage-schemas";
 import {
   db,
@@ -45,8 +46,10 @@ export const Route = createFileRoute("/_authenticated/actualites")({
   // vue optionnelle : les liens existants vers /actualites (sans paramètre) restent valides.
   validateSearch: (search: Record<string, unknown>): { vue?: NewsView } =>
     NEWS_VIEWS.includes(search.vue as NewsView) ? { vue: search.vue as NewsView } : {},
-  beforeLoad: ({ context }) => {
-    if (context.role !== "admin") throw redirect({ to: "/" });
+  // Page réservée aux membres de la Direction RH - Communication Interne (règle A+ ; la base reste l'autorité).
+  beforeLoad: async ({ context }) => {
+    const member = await fetchIsNewsMember(context.email).catch(() => false);
+    if (!member) throw redirect({ to: "/" });
   },
   component: NewsPage,
 });
@@ -102,7 +105,7 @@ const newsStatusLabels: Record<string, string> = {
 
 const empty: NewsInput = { title: "", body: "", author: "", status: "brouillon" };
 /** Direction proposée par défaut à l'admin (RH, communication interne), si elle existe dans `teams`. */
-const DEFAULT_AUTHOR = "Direction RH - Communication Interne";
+const DEFAULT_AUTHOR = NEWS_TEAM;
 
 /** Directions existantes (table `teams`, lisible par les comptes connectés). */
 async function fetchTeamNames(): Promise<string[]> {
