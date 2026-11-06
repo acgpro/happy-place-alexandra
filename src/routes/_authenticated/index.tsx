@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { signOut } from "@/lib/auth";
+import { signOutToConnexion } from "@/lib/auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -360,7 +360,7 @@ function ManagerSpace() {
               <Icon name="file_download" /> {exportReport.isPending ? "EXPORT EN COURS…" : "EXPORTER LE RAPPORT"}
             </Button>
             <button
-              onClick={() => signOut()}
+              onClick={() => signOutToConnexion()}
               className="flex items-center gap-xs px-md py-xs border border-outline bg-surface text-primary font-label-md text-label-md hover:bg-surface-container"
             >
               <Icon name="logout" /> DÉCONNEXION

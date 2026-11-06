@@ -25,3 +25,9 @@ export async function signOut() {
   await supabase.auth.signOut();
   window.location.replace("/auth");
 }
+
+/** Déconnexion depuis le tableau de bord : retour à la page de connexion par e-mail (et non à l'entrée anonyme). */
+export async function signOutToConnexion() {
+  await supabase.auth.signOut();
+  window.location.replace("/connexion");
+}
