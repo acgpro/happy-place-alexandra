@@ -707,23 +707,30 @@ function ManagerSpace() {
                         </div>
                       </div>
                     </div>
-                    <select
-                      aria-label={`Statut de ${b.title}`}
-                      value={b.status}
-                      disabled={!isAdmin}
-                      onChange={(e) => setBlocker.mutate({ id: b.id, status: e.target.value })}
-                      className={`bg-transparent border-none text-xs font-label-sm cursor-pointer ${critical ? "text-error" : "text-on-surface-variant"}`}
-                    >
-                      <option>OUVERT</option>
-                      <option>EN COURS</option>
-                      <option>SURVEILLANCE</option>
-                      <option
-                        disabled={b.status === "OUVERT"}
-                        title={b.status === "OUVERT" ? "Passe d'abord par EN COURS" : undefined}
+                    {isAdmin ? (
+                      <select
+                        aria-label={`Statut de ${b.title}`}
+                        value={b.status}
+                        onChange={(e) => setBlocker.mutate({ id: b.id, status: e.target.value })}
+                        className={`bg-transparent border-none text-xs font-label-sm cursor-pointer ${critical ? "text-error" : "text-on-surface-variant"}`}
                       >
-                        RÉSOLU
-                      </option>
-                    </select>
+                        <option>OUVERT</option>
+                        <option>EN COURS</option>
+                        <option>SURVEILLANCE</option>
+                        <option
+                          disabled={b.status === "OUVERT"}
+                          title={b.status === "OUVERT" ? "Passe d'abord par EN COURS" : undefined}
+                        >
+                          RÉSOLU
+                        </option>
+                      </select>
+                    ) : (
+                      <span
+                        className={`text-xs font-label-sm ${critical ? "text-error" : "text-on-surface-variant"}`}
+                      >
+                        {b.status}
+                      </span>
+                    )}
                   </div>
                 );
               })}
@@ -734,7 +741,6 @@ function ManagerSpace() {
           <section className="col-span-12 md:col-span-5 bg-surface-container-lowest border border-outline-variant p-md flex flex-col">
             <div className="flex items-center justify-between mb-md">
               <h2 className="font-headline-sm text-headline-sm text-primary">Indicateurs</h2>
-              {isAdmin && <Icon name="settings" className="text-on-surface-variant cursor-pointer" />}
             </div>
             <div className="grid grid-cols-2 gap-sm mb-md">
               {metrics.data?.map((m) => (
